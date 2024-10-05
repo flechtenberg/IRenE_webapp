@@ -265,11 +265,19 @@ def execute_search_scopus(query, scopus_api_key, threshold=1000):
         if num_results > 0 and num_results <= threshold:
             doc_srch.execute(client, get_all=True)
             data = doc_srch.results
-            matched_papers = set()
+            matched_papers = []
             for entry in data:
-                link = entry.get('link', [{}])[0].get('@href', '')
-                if link:
-                    matched_papers.add(link)
+                paper_info = {
+                    'scopus_id': entry.get('dc:identifier', '').replace('SCOPUS_ID:', ''),
+                    'first_author': entry.get('dc:creator', '-'),
+                    'year': entry.get('prism:coverDate', '-')[:4],
+                    'title': entry.get('dc:title', '-'),
+                    'journal': entry.get('prism:publicationName', '-'),
+                    'citations': entry.get('citedby-count', '0'),
+                    'open_access': entry.get('openaccess', '-'),
+                    'link': entry.get('link', [{}])[2].get('@href', '#')  # Usually the third link is the scopus link
+                }
+                matched_papers.append(paper_info)
             match_count = len(matched_papers)
             return match_count, matched_papers
         else:
@@ -317,7 +325,7 @@ def mock_sampling_process(weight_dict, threshold, outer_iterations=5, progress_c
 
             # Update progress
             if progress_callback:
-                progress_callback(outer, selected_keyword, query, match_count)
+                progress_callback(outer, query, match_count)
 
             if match_count < threshold:
                 print(f"Match count {match_count} below threshold {threshold}. Ending inner iterations.")
@@ -349,10 +357,10 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
     - threshold: The match count threshold.
     - outer_iterations: Number of separate sampling runs.
     - progress_callback: Function to call with progress updates.
-    - scopus_api_key: Dict containing 'apikey' and 'insttoken' (used for real API calls).
+    - scopus_api_key: Dict containing 'apikey' and 'insttoken'.
 
     Returns:
-    - ranked_papers: List of tuples (paper_link, count), sorted by count descending.
+    - ranked_papers: List of dictionaries containing paper information, sorted by occurrences.
     """
     if not scopus_api_key:
         print("No Scopus API Key provided. Cannot perform real sampling.")
@@ -382,7 +390,7 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
 
             # Update progress
             if progress_callback:
-                progress_callback(outer, selected_keyword, query, match_count)
+                progress_callback(outer, query, match_count)
 
             if match_count < threshold:
                 print(f"Match count {match_count} below threshold {threshold}. Ending inner iterations.")
@@ -393,16 +401,23 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
 
         # Record matched papers from the final inner iteration
         for paper in matched_papers:
-            paper_rank_counts[paper] = paper_rank_counts.get(paper, 0) + 1
-            print(f"Recorded paper: {paper} | Current count: {paper_rank_counts[paper]}")
+            scopus_id = paper['scopus_id']
+            if scopus_id in paper_rank_counts:
+                paper_rank_counts[scopus_id]['occurrences'] += 1
+            else:
+                paper['occurrences'] = 1
+                paper_rank_counts[scopus_id] = paper
+
+            print(f"Recorded paper: {scopus_id} | Current occurrences: {paper_rank_counts[scopus_id]['occurrences']}")
 
         # Add a small delay after each outer iteration
         time.sleep(0.1)
 
-    # Create a ranked list sorted by count descending
-    ranked_papers = sorted(paper_rank_counts.items(), key=lambda x: x[1], reverse=True)
+    # Create a ranked list sorted by occurrences descending
+    ranked_papers = sorted(paper_rank_counts.values(), key=lambda x: x['occurrences'], reverse=True)
     print("\n--- Sampling Completed ---")
     return ranked_papers
+
 
 
 # Main block for standalone testing

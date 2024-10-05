@@ -1,6 +1,6 @@
 # app.py
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 import os
 import threading
 import uuid
@@ -112,7 +112,7 @@ def process_refined_keywords():
     return render_template('auto_submit_start_sampling.html')
 
 
-def update_progress(sampling_id, outer_iter, selected_keyword, query, match_count):
+def update_progress(sampling_id, outer_iter, outer_iterations, query, match_count):
     """
     Update the progress_info dictionary with the latest iteration details.
     """
@@ -120,14 +120,22 @@ def update_progress(sampling_id, outer_iter, selected_keyword, query, match_coun
         progress_info[sampling_id] = {
             'current_outer_iteration': 0,
             'outer_iterations': 0,
-            'queries': [],
-            'matches_per_query': [],
-            'status': 'running'
+            'current_query': '',
+            'last_match_count': 0,
+            'status': 'running',
+            'history': []
         }
-
     progress_info[sampling_id]['current_outer_iteration'] = outer_iter
-    progress_info[sampling_id]['queries'].append(query)
-    progress_info[sampling_id]['matches_per_query'].append(match_count)
+    progress_info[sampling_id]['current_query'] = query
+    progress_info[sampling_id]['last_match_count'] = match_count
+    progress_info[sampling_id]['outer_iterations'] = outer_iterations
+
+    # Append to history
+    progress_info[sampling_id]['history'].append({
+                                                     'outer_iteration': outer_iter,
+                                                     'query': query,
+                                                     'match_count': match_count
+                                                 })
 
 @app.route('/start_sampling', methods=['POST'])
 def start_sampling():
@@ -155,7 +163,8 @@ def start_sampling():
         'outer_iterations': outer_iterations,
         'queries': [],
         'matches_per_query': [],
-        'status': 'running'
+        'status': 'running',
+        'history': []
     }
 
     # Store sampling_id in the session
@@ -166,8 +175,8 @@ def start_sampling():
         print(f"Starting sampling thread for Sampling ID: {sampling_id}")
 
         # Define the progress_callback
-        def progress_callback(outer_iter, selected_keyword, query, match_count):
-            update_progress(sampling_id, outer_iter, selected_keyword, query, match_count)
+        def progress_callback(outer_iter, query, match_count):
+            update_progress(sampling_id, outer_iter, outer_iterations, query, match_count)
             print(f"Progress Update - Outer Iteration {outer_iter}: Query='{query}' | Matches={match_count}")
 
         #ranked = mock_sampling_process(weight_dict, threshold, outer_iterations, progress_callback=progress_callback)
@@ -210,6 +219,65 @@ def results():
         print(f"Ranked papers list is empty for Sampling ID: {sampling_id}", flush=True)
 
     return render_template('results.html', papers=ranked_papers)
+
+
+@app.route('/download_results')
+def download_results():
+    sampling_id = session.get('sampling_id', None)
+    if not sampling_id or sampling_id not in ranked_results:
+        return redirect(url_for('index'))
+
+    papers = ranked_results[sampling_id]
+
+    # Create CSV data
+    import csv
+    import io
+
+    # Initialize BytesIO and TextIOWrapper without 'with' statement
+    si = io.BytesIO()
+    text_io = io.TextIOWrapper(si, encoding='utf-8-sig', newline='')
+
+    fieldnames = ['Occurrences', 'First Author', 'Year', 'Title', 'Journal', 'Citations', 'Open Access', 'Link']
+    writer = csv.DictWriter(text_io, fieldnames=fieldnames)
+    writer.writeheader()
+    for paper in papers:
+        writer.writerow({
+            'Occurrences': paper['occurrences'],
+            'First Author': paper['first_author'],
+            'Year': paper['year'],
+            'Title': paper['title'],
+            'Journal': paper['journal'],
+            'Citations': paper['citations'],
+            'Open Access': paper['open_access'],
+            'Link': paper['link']
+        })
+
+    # Flush the TextIOWrapper to ensure all data is written to BytesIO
+    text_io.flush()
+    # Seek to the beginning of BytesIO
+    si.seek(0)
+
+    # Read the content from BytesIO
+    output = si.getvalue()
+
+    # Close TextIOWrapper and BytesIO if desired
+    text_io.close()
+    si.close()
+
+    # Return the CSV data as an HTTP response with appropriate headers
+    return Response(
+        output,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': 'attachment;filename=results.csv'}
+    )
+
+    # Return the CSV data as an HTTP response with appropriate headers
+    return Response(
+        output,
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': 'attachment;filename=results.csv'}
+    )
+
 
 
 @app.route('/settings', methods=['GET', 'POST'])
