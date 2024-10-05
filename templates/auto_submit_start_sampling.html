@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Starting Sampling</title>
+</head>
+<body>
+    <p>Processing... Please wait while the sampling starts.</p>
+    <form id="startSamplingForm" action="{{ url_for('start_sampling') }}" method="post">
+        <button type="submit" id="submitButton" style="display:none;">Submit</button>
+    </form>
+    <script>
+        // Automatically submit the form when the page loads
+        document.getElementById('startSamplingForm').submit();
+    </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!-- templates/processing.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Processing</title>
+    <script>
+        var intervalId;
+
+        function fetchProgress() {
+            fetch("/sampling_progress/{{ sampling_id }}")
+                .then(response => response.json())
+                .then(data => {
+                    // Update status
+                    document.getElementById('status').textContent = data.status;
+
+                    // Update current outer iteration
+                    document.getElementById('current_outer').textContent = data.current_outer_iteration;
+
+                    // Update queries and match counts
+                    var queriesList = document.getElementById('queries');
+                    var matchesList = document.getElementById('matches_per_query');
+
+                    // Clear existing lists
+                    queriesList.innerHTML = '';
+                    matchesList.innerHTML = '';
+
+                    // Populate new data
+                    data.queries.forEach(function(query, index) {
+                        var li = document.createElement('li');
+                        li.textContent = query;
+                        queriesList.appendChild(li);
+                    });
+
+                    data.matches_per_query.forEach(function(match, index) {
+                        var li = document.createElement('li');
+                        li.textContent = match;
+                        matchesList.appendChild(li);
+                    });
+
+                    // Check if sampling is completed
+                    if (data.status === 'completed') {
+                        clearInterval(intervalId);
+                        window.location.href = "{{ url_for('results') }}";
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching progress:', error);
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            intervalId = setInterval(fetchProgress, 1000); // Poll every second
+        });
+    </script>
+</head>
+<body>
+    <h2>Sampling in Progress...</h2>
+    <p>Status: <span id="status">Running</span></p>
+    <p>Current Outer Iteration: <span id="current_outer">0</span></p>
+    <h3>Queries:</h3>
+    <ul id="queries">
+        <!-- Queries will be populated here -->
+    </ul>
+    <h3>Matches per Query:</h3>
+    <ul id="matches_per_query">
+        <!-- Match counts will be populated here -->
+    </ul>
+</body>
+</html>

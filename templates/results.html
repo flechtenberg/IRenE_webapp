@@ -1,0 +1,40 @@
+<!-- templates/results.html -->
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sampling Results</title>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h2>Ranked List of Papers</h2>
+    <table>
+        <tr>
+            <th>Rank</th>
+            <th>Paper Link</th>
+            <th>Occurrences</th>
+        </tr>
+        {% for paper, count in papers %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td><a href="{{ paper }}" target="_blank">{{ paper }}</a></td>
+            <td>{{ count }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    <br>
+    <a href="{{ url_for('index') }}">Go Back to Home</a>
+</body>
+</html>

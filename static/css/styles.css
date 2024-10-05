@@ -1,0 +1,15 @@
+body {
+    padding-top: 70px; /* Ensures content isn't hidden behind the navbar */
+}
+
+h1, h2 {
+    margin-bottom: 20px; /* Adds spacing below headings */
+}
+
+.table th, .table td {
+    vertical-align: middle; /* Vertically centers table content */
+}
+
+.navbar-brand {
+    font-weight: bold; /* Makes the brand name bold */
+}

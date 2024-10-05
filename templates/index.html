@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+    <h1>Welcome to Paper Finder</h1>
+    <form action="{{ url_for('extract_keywords') }}" method="post" enctype="multipart/form-data">
+        <!-- Upload Seed Corpus -->
+        <div class="form-group">
+            <label for="seedCorpus">Upload Seed Corpus (PDFs):</label>
+            <input type="file" class="form-control-file" id="seedCorpus" name="seedCorpus" multiple required>
+        </div>
+        <!-- Number of Iterations -->
+        <div class="form-group">
+            <label for="iterations">Number of Iterations:</label>
+            <input type="number" class="form-control" id="iterations" name="iterations" value="10" min="1" required>
+        </div>
+        <!-- Relevance Threshold -->
+        <div class="form-group">
+            <label for="threshold">Relevance Threshold:</label>
+            <input type="number" class="form-control" id="threshold" name="threshold" value="100" min="1" required>
+        </div>
+        <!-- Number of Keywords to Include -->
+        <div class="form-group">
+            <label for="num_keywords">Number of Keywords to Include:</label>
+            <input type="number" class="form-control" id="num_keywords" name="num_keywords" value="20" min="1" required>
+        </div>
+        <!-- Submit Button -->
+        <button type="submit" class="btn btn-primary">Extract Keywords</button>
+    </form>
+{% endblock %}
