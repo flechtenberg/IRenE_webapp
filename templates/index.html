@@ -1,28 +1,123 @@
-{% extends "base.html" %}
-{% block content %}
-    <h1>Welcome to Paper Finder</h1>
-    <form action="{{ url_for('extract_keywords') }}" method="post" enctype="multipart/form-data">
-        <!-- Upload Seed Corpus -->
-        <div class="form-group">
-            <label for="seedCorpus">Upload Seed Corpus (PDFs):</label>
-            <input type="file" class="form-control-file" id="seedCorpus" name="seedCorpus" multiple required>
-        </div>
-        <!-- Number of Iterations -->
-        <div class="form-group">
-            <label for="iterations">Number of Iterations:</label>
-            <input type="number" class="form-control" id="iterations" name="iterations" value="10" min="1" required>
-        </div>
-        <!-- Relevance Threshold -->
-        <div class="form-group">
-            <label for="threshold">Relevance Threshold:</label>
-            <input type="number" class="form-control" id="threshold" name="threshold" value="100" min="1" required>
-        </div>
-        <!-- Number of Keywords to Include -->
-        <div class="form-group">
-            <label for="num_keywords">Number of Keywords to Include:</label>
-            <input type="number" class="form-control" id="num_keywords" name="num_keywords" value="20" min="1" required>
-        </div>
-        <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary">Extract Keywords</button>
-    </form>
-{% endblock %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IRenE Webapp - Home</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 1rem 0;
+            text-align: center;
+        }
+
+        section {
+            margin: 2rem auto;
+            max-width: 600px;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h1, h2 {
+            margin-bottom: 1rem;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input[type="file"],
+        input[type="number"] {
+            margin-bottom: 1.5rem;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="file"]:focus,
+        input[type="number"]:focus {
+            border-color: #4CAF50;
+        }
+
+        label {
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        button {
+            padding: 0.75rem;
+            font-size: 1rem;
+            color: white;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            font-size: 0.9rem;
+            color: #777;
+        }
+
+        @media (max-width: 768px) {
+            section {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Welcome to IRenE Webapp</h1>
+    </header>
+
+    <section>
+        <form action="{{ url_for('extract_keywords') }}" method="POST" enctype="multipart/form-data">
+            <h2>Upload Seed Corpus</h2>
+            <input type="file" name="seedCorpus" multiple required>
+
+            <h2>Upload Scopus API Key</h2>
+            <input type="file" name="scopusApiKey" accept=".json" required>
+
+            <label for="iterations">Iterations:</label>
+            <input type="number" id="iterations" name="iterations" value="10" min="1" required>
+
+            <label for="threshold">Threshold:</label>
+            <input type="number" id="threshold" name="threshold" value="100" min="1" required>
+
+            <label for="num_keywords">Number of Keywords:</label>
+            <input type="number" id="num_keywords" name="num_keywords" value="20" min="1" required>
+
+            <button type="submit">Extract Keywords</button>
+        </form>
+    </section>
+
+    <footer>
+        <p>&copy; 2024 IRenE Webapp</p>
+    </footer>
+
+</body>
+</html>

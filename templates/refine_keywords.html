@@ -1,64 +1,76 @@
 {% extends "base.html" %}
 {% block content %}
-    <h2>Refine Extracted Keywords</h2>
-    <form action="{{ url_for('process_refined_keywords') }}" method="post">
-        <!-- Display Extracted Keywords with Checkboxes and Weight Inputs -->
-        <div class="form-group">
-            <label>Include/Exclude Keywords:</label>
-            <table class="table table-bordered">
-                <thead>
-                    <tr>
-                        <th>Select</th>
-                        <th>Keyword</th>
-                        <th>Weight (TF-IDF)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for keyword in keywords %}
-                    <tr>
-                        <td>
-                            <input type="checkbox" name="selected_keywords" value="{{ keyword.word }}" checked>
-                        </td>
-                        <td>{{ keyword.word }}</td>
-                        <td>
-                            <input type="number" step="0.01" name="weights[{{ keyword.word }}]" value="{{ keyword.weight }}" min="0">
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <!-- Add New Keywords -->
-        <div class="form-group">
-            <label>Add New Keywords:</label>
-            <div id="new-keywords">
-                <div class="form-row align-items-center mb-2">
-                    <div class="col-auto">
-                        <input type="text" class="form-control mb-2" name="new_keywords[]" placeholder="Keyword">
-                    </div>
-                    <div class="col-auto">
-                        <input type="number" step="0.01" class="form-control mb-2" name="new_weights[]" placeholder="Weight" min="0">
+    <section style="margin: 2rem auto; max-width: 600px; background-color: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+        <h2 style="text-align: center; margin-bottom: 1.5rem;">Refine Extracted Keywords</h2>
+
+        <form action="{{ url_for('process_refined_keywords') }}" method="post">
+            <!-- Display Extracted Keywords with Checkboxes and Weight Inputs -->
+            <div class="form-group">
+                <label><strong>Include/Exclude Keywords:</strong></label>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 1.5rem;">
+                    <thead style="background-color: #4CAF50; color: white;">
+                        <tr>
+                            <th style="padding: 0.75rem; border: 1px solid #ddd;">Select</th>
+                            <th style="padding: 0.75rem; border: 1px solid #ddd;">Keyword</th>
+                            <th style="padding: 0.75rem; border: 1px solid #ddd;">Weight (TF-IDF)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for keyword in keywords %}
+                        <tr>
+                            <td style="padding: 0.75rem; border: 1px solid #ddd;">
+                                <input type="checkbox" name="selected_keywords" value="{{ keyword.word }}" checked>
+                            </td>
+                            <td style="padding: 0.75rem; border: 1px solid #ddd;">{{ keyword.word }}</td>
+                            <td style="padding: 0.75rem; border: 1px solid #ddd;">
+                                <input type="number" step="0.01" name="weights[{{ keyword.word }}]" value="{{ keyword.weight }}" min="0" style="padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;">
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Add New Keywords Section -->
+            <div class="form-group">
+                <label><strong>Add New Keywords:</strong></label>
+                <div id="new-keywords">
+                    <div class="form-row" style="display: flex; align-items: center; margin-bottom: 1rem;">
+                        <div style="flex: 1; margin-right: 1rem;">
+                            <input type="text" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" name="new_keywords[]" placeholder="Keyword">
+                        </div>
+                        <div style="flex: 1;">
+                            <input type="number" step="0.01" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" name="new_weights[]" placeholder="Weight" min="0">
+                        </div>
                     </div>
                 </div>
+                <button type="button" onclick="addKeyword()" style="background-color: #4CAF50; color: white; padding: 0.75rem; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s;">
+                    Add Another Keyword
+                </button>
             </div>
-            <button type="button" class="btn btn-secondary" onclick="addKeyword()">Add Another Keyword</button>
-        </div>
-        <!-- Submit Button -->
-        <button type="submit" class="btn btn-primary">Start Sampling</button>
-    </form>
+
+            <!-- Submit Button -->
+            <button type="submit" style="background-color: #4CAF50; color: white; padding: 0.75rem; width: 100%; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s; margin-top: 1.5rem;">
+                Start Sampling
+            </button>
+        </form>
+    </section>
 
     <!-- JavaScript to Add New Keyword Fields -->
     <script>
         function addKeyword() {
             const newKeywordsDiv = document.getElementById('new-keywords');
             const newRow = document.createElement('div');
-            newRow.className = 'form-row align-items-center mb-2';
+            newRow.className = 'form-row';
+            newRow.style.display = 'flex';
+            newRow.style.alignItems = 'center';
+            newRow.style.marginBottom = '1rem';
             newRow.innerHTML = `
-                <div class="col-auto">
-                    <input type="text" class="form-control mb-2" name="new_keywords[]" placeholder="Keyword">
+                <div style="flex: 1; margin-right: 1rem;">
+                    <input type="text" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" name="new_keywords[]" placeholder="Keyword">
                 </div>
-                <div class="col-auto">
-                    <input type="number" step="0.01" class="form-control mb-2" name="new_weights[]" placeholder="Weight" min="0">
+                <div style="flex: 1;">
+                    <input type="number" step="0.01" style="width: 100%; padding: 0.5rem; border: 1px solid #ccc; border-radius: 4px;" name="new_weights[]" placeholder="Weight" min="0">
                 </div>
             `;
             newKeywordsDiv.appendChild(newRow);

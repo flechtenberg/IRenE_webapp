@@ -1,9 +1,79 @@
-<!-- templates/processing.html -->
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Processing</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+
+        section {
+            margin: 2rem auto;
+            max-width: 600px;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 1.5rem;
+            color: #4CAF50;
+        }
+
+        p {
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+        }
+
+        h3 {
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            color: #4CAF50;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin-bottom: 1.5rem;
+        }
+
+        ul li {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            background-color: #f9f9f9;
+        }
+
+        #status, #current_outer {
+            font-weight: bold;
+        }
+
+        .loading-icon {
+            display: block;
+            margin: 0 auto;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-top: 1.5rem;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
     <script>
         var intervalId;
 
@@ -55,16 +125,23 @@
     </script>
 </head>
 <body>
-    <h2>Sampling in Progress...</h2>
-    <p>Status: <span id="status">Running</span></p>
-    <p>Current Outer Iteration: <span id="current_outer">0</span></p>
-    <h3>Queries:</h3>
-    <ul id="queries">
-        <!-- Queries will be populated here -->
-    </ul>
-    <h3>Matches per Query:</h3>
-    <ul id="matches_per_query">
-        <!-- Match counts will be populated here -->
-    </ul>
+    <section>
+        <h2>Sampling in Progress...</h2>
+
+        <p>Status: <span id="status">Running</span></p>
+        <p>Current Outer Iteration: <span id="current_outer">0</span></p>
+
+        <h3>Queries:</h3>
+        <ul id="queries">
+            <!-- Queries will be populated here -->
+        </ul>
+
+        <h3>Matches per Query:</h3>
+        <ul id="matches_per_query">
+            <!-- Match counts will be populated here -->
+        </ul>
+
+        <div class="loading-icon"></div>
+    </section>
 </body>
 </html>
