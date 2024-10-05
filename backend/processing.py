@@ -9,6 +9,8 @@ import PyPDF2
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import time
+from elsapy.elsclient import ElsClient
+from elsapy.elssearch import ElsSearch
 
 # Load spaCy English model
 nlp = spacy.load('en_core_web_sm')
@@ -232,6 +234,51 @@ def execute_search(df, query):
     return match_count, matched_papers
 
 
+def execute_search_scopus(query, scopus_api_key, threshold=1000):
+    """
+    Execute the search query using the Scopus API via elsapy.
+
+    Parameters:
+    - query: Search query string.
+    - scopus_api_key: Dict containing 'apikey' and 'insttoken'.
+
+    Returns:
+    - match_count: Number of matching articles.
+    - matched_papers: Set of unique paper identifiers (e.g., Links).
+    """
+    headers = {
+        'X-ELS-APIKey': scopus_api_key['apikey'],
+        'X-ELS-Insttoken': scopus_api_key['insttoken']
+    }
+
+    client = ElsClient(scopus_api_key['apikey'])
+    client.inst_token = scopus_api_key['insttoken']
+
+    search_query = f'TITLE-ABS-KEY({query})'
+    doc_srch = ElsSearch(search_query, 'scopus')
+
+    try:
+        doc_srch.execute(client, get_all=False)
+        num_results = doc_srch.tot_num_res
+        print(f"Scopus API Query '{query}' matched {num_results} articles.")
+
+        if num_results > 0 and num_results <= threshold:
+            doc_srch.execute(client, get_all=True)
+            data = doc_srch.results
+            matched_papers = set()
+            for entry in data:
+                link = entry.get('link', [{}])[0].get('@href', '')
+                if link:
+                    matched_papers.add(link)
+            match_count = len(matched_papers)
+            return match_count, matched_papers
+        else:
+            return num_results, set()
+    except Exception as e:
+        print(f"Exception during Scopus API call: {e}")
+        return 0, set()
+
+
 def mock_sampling_process(weight_dict, threshold, outer_iterations=5, progress_callback=None):
     """
     Perform the mock sampling process with outer and inner iterations.
@@ -266,6 +313,71 @@ def mock_sampling_process(weight_dict, threshold, outer_iterations=5, progress_c
             search_keywords.append(selected_keyword)
             query = construct_search_query(search_keywords)
             match_count, matched_papers = execute_search(scopus_df, query)
+            print(f"Added '{selected_keyword}' | Query: '{query}' | Matches: {match_count}")
+
+            # Update progress
+            if progress_callback:
+                progress_callback(outer, selected_keyword, query, match_count)
+
+            if match_count < threshold:
+                print(f"Match count {match_count} below threshold {threshold}. Ending inner iterations.")
+                break
+
+            # Add a small delay to simulate processing time
+            time.sleep(0.1)
+
+        # Record matched papers from the final inner iteration
+        for paper in matched_papers:
+            paper_rank_counts[paper] = paper_rank_counts.get(paper, 0) + 1
+            print(f"Recorded paper: {paper} | Current count: {paper_rank_counts[paper]}")
+
+        # Add a small delay after each outer iteration
+        time.sleep(0.1)
+
+    # Create a ranked list sorted by count descending
+    ranked_papers = sorted(paper_rank_counts.items(), key=lambda x: x[1], reverse=True)
+    print("\n--- Sampling Completed ---")
+    return ranked_papers
+
+
+def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress_callback=None, scopus_api_key=None):
+    """
+    Perform the sampling process using Scopus API with outer and inner iterations.
+
+    Parameters:
+    - weight_dict: Dict of keywords and their weights.
+    - threshold: The match count threshold.
+    - outer_iterations: Number of separate sampling runs.
+    - progress_callback: Function to call with progress updates.
+    - scopus_api_key: Dict containing 'apikey' and 'insttoken' (used for real API calls).
+
+    Returns:
+    - ranked_papers: List of tuples (paper_link, count), sorted by count descending.
+    """
+    if not scopus_api_key:
+        print("No Scopus API Key provided. Cannot perform real sampling.")
+        return []
+
+    keywords = list(weight_dict.keys())
+    weights = list(weight_dict.values())
+
+    paper_rank_counts = {}
+
+    for outer in range(1, outer_iterations + 1):
+        print(f"\n--- Outer Iteration {outer} ---")
+        search_keywords = []
+        while True:
+            selected_keyword = weighted_random_selection(keywords, weights)
+            if not selected_keyword:
+                print("No keyword selected. Ending inner iterations.")
+                break
+            # Prevent adding duplicate keywords
+            if selected_keyword in search_keywords:
+                print(f"Keyword '{selected_keyword}' already in query. Selecting a different keyword.")
+                continue
+            search_keywords.append(selected_keyword)
+            query = construct_search_query(search_keywords)
+            match_count, matched_papers = execute_search_scopus(query, scopus_api_key, threshold)
             print(f"Added '{selected_keyword}' | Query: '{query}' | Matches: {match_count}")
 
             # Update progress
