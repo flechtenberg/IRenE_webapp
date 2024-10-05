@@ -220,6 +220,7 @@ def results():
 
     return render_template('results.html', papers=ranked_papers)
 
+
 @app.route('/download_results')
 def download_results():
     sampling_id = session.get('sampling_id', None)
@@ -230,10 +231,14 @@ def download_results():
 
     # Create CSV data
     import csv
-    from io import StringIO
-    si = StringIO()
+    import io
+
+    # Initialize BytesIO and TextIOWrapper without 'with' statement
+    si = io.BytesIO()
+    text_io = io.TextIOWrapper(si, encoding='utf-8-sig', newline='')
+
     fieldnames = ['Occurrences', 'First Author', 'Year', 'Title', 'Journal', 'Citations', 'Open Access', 'Link']
-    writer = csv.DictWriter(si, fieldnames=fieldnames)
+    writer = csv.DictWriter(text_io, fieldnames=fieldnames)
     writer.writeheader()
     for paper in papers:
         writer.writerow({
@@ -246,12 +251,30 @@ def download_results():
             'Open Access': paper['open_access'],
             'Link': paper['link']
         })
+
+    # Flush the TextIOWrapper to ensure all data is written to BytesIO
+    text_io.flush()
+    # Seek to the beginning of BytesIO
+    si.seek(0)
+
+    # Read the content from BytesIO
     output = si.getvalue()
+
+    # Close TextIOWrapper and BytesIO if desired
+    text_io.close()
     si.close()
 
+    # Return the CSV data as an HTTP response with appropriate headers
     return Response(
         output,
-        mimetype='text/csv',
+        mimetype='text/csv; charset=utf-8',
+        headers={'Content-Disposition': 'attachment;filename=results.csv'}
+    )
+
+    # Return the CSV data as an HTTP response with appropriate headers
+    return Response(
+        output,
+        mimetype='text/csv; charset=utf-8',
         headers={'Content-Disposition': 'attachment;filename=results.csv'}
     )
 
