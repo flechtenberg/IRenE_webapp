@@ -112,7 +112,7 @@ def process_refined_keywords():
     return render_template('auto_submit_start_sampling.html')
 
 
-def update_progress(sampling_id, outer_iter, selected_keyword, query, match_count):
+def update_progress(sampling_id, outer_iter, outer_iterations, query, match_count):
     """
     Update the progress_info dictionary with the latest iteration details.
     """
@@ -120,14 +120,22 @@ def update_progress(sampling_id, outer_iter, selected_keyword, query, match_coun
         progress_info[sampling_id] = {
             'current_outer_iteration': 0,
             'outer_iterations': 0,
-            'queries': [],
-            'matches_per_query': [],
-            'status': 'running'
+            'current_query': '',
+            'last_match_count': 0,
+            'status': 'running',
+            'history': []
         }
-
     progress_info[sampling_id]['current_outer_iteration'] = outer_iter
-    progress_info[sampling_id]['queries'].append(query)
-    progress_info[sampling_id]['matches_per_query'].append(match_count)
+    progress_info[sampling_id]['current_query'] = query
+    progress_info[sampling_id]['last_match_count'] = match_count
+    progress_info[sampling_id]['outer_iterations'] = outer_iterations
+
+    # Append to history
+    progress_info[sampling_id]['history'].append({
+                                                     'outer_iteration': outer_iter,
+                                                     'query': query,
+                                                     'match_count': match_count
+                                                 })
 
 @app.route('/start_sampling', methods=['POST'])
 def start_sampling():
@@ -155,7 +163,8 @@ def start_sampling():
         'outer_iterations': outer_iterations,
         'queries': [],
         'matches_per_query': [],
-        'status': 'running'
+        'status': 'running',
+        'history': []
     }
 
     # Store sampling_id in the session
@@ -166,8 +175,8 @@ def start_sampling():
         print(f"Starting sampling thread for Sampling ID: {sampling_id}")
 
         # Define the progress_callback
-        def progress_callback(outer_iter, selected_keyword, query, match_count):
-            update_progress(sampling_id, outer_iter, selected_keyword, query, match_count)
+        def progress_callback(outer_iter, query, match_count):
+            update_progress(sampling_id, outer_iter, outer_iterations, query, match_count)
             print(f"Progress Update - Outer Iteration {outer_iter}: Query='{query}' | Matches={match_count}")
 
         #ranked = mock_sampling_process(weight_dict, threshold, outer_iterations, progress_callback=progress_callback)

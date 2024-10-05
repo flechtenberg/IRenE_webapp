@@ -317,7 +317,7 @@ def mock_sampling_process(weight_dict, threshold, outer_iterations=5, progress_c
 
             # Update progress
             if progress_callback:
-                progress_callback(outer, selected_keyword, query, match_count)
+                progress_callback(outer, query, match_count)
 
             if match_count < threshold:
                 print(f"Match count {match_count} below threshold {threshold}. Ending inner iterations.")
@@ -382,7 +382,7 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
 
             # Update progress
             if progress_callback:
-                progress_callback(outer, selected_keyword, query, match_count)
+                progress_callback(outer, query, match_count)
 
             if match_count < threshold:
                 print(f"Match count {match_count} below threshold {threshold}. Ending inner iterations.")
