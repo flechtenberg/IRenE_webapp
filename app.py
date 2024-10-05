@@ -1,6 +1,6 @@
 # app.py
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
 import os
 import threading
 import uuid
@@ -219,6 +219,42 @@ def results():
         print(f"Ranked papers list is empty for Sampling ID: {sampling_id}", flush=True)
 
     return render_template('results.html', papers=ranked_papers)
+
+@app.route('/download_results')
+def download_results():
+    sampling_id = session.get('sampling_id', None)
+    if not sampling_id or sampling_id not in ranked_results:
+        return redirect(url_for('index'))
+
+    papers = ranked_results[sampling_id]
+
+    # Create CSV data
+    import csv
+    from io import StringIO
+    si = StringIO()
+    fieldnames = ['Occurrences', 'First Author', 'Year', 'Title', 'Journal', 'Citations', 'Open Access', 'Link']
+    writer = csv.DictWriter(si, fieldnames=fieldnames)
+    writer.writeheader()
+    for paper in papers:
+        writer.writerow({
+            'Occurrences': paper['occurrences'],
+            'First Author': paper['first_author'],
+            'Year': paper['year'],
+            'Title': paper['title'],
+            'Journal': paper['journal'],
+            'Citations': paper['citations'],
+            'Open Access': paper['open_access'],
+            'Link': paper['link']
+        })
+    output = si.getvalue()
+    si.close()
+
+    return Response(
+        output,
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment;filename=results.csv'}
+    )
+
 
 
 @app.route('/settings', methods=['GET', 'POST'])
