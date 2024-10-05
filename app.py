@@ -4,7 +4,9 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 import os
 import threading
 import uuid
-from backend.processing import extract_seed, get_keywords, mock_sampling_process
+import json
+from werkzeug.utils import secure_filename
+from backend.processing import extract_seed, get_keywords, mock_sampling_process, scopus_sampling_process
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
@@ -13,6 +15,12 @@ app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
 progress_info = {}
 ranked_results = {}
 
+# Allowed extensions for API key upload
+ALLOWED_EXTENSIONS = {'json'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
@@ -21,7 +29,8 @@ def index():
 
 @app.route('/extract_keywords', methods=['POST'])
 def extract_keywords():
-    if 'seedCorpus' not in request.files:
+    # Check if the user has uploaded both seedCorpus and scopusApiKey
+    if 'seedCorpus' not in request.files or 'scopusApiKey' not in request.files:
         return redirect(url_for('index'))
 
     files = request.files.getlist('seedCorpus')
@@ -38,6 +47,26 @@ def extract_keywords():
     # Store parameters in session for later use
     session['threshold'] = threshold
     session['iterations'] = iterations
+
+    # Process Scopus API Key
+    api_key_file = request.files['scopusApiKey']
+    if api_key_file and allowed_file(api_key_file.filename):
+        filename = secure_filename(api_key_file.filename)
+        try:
+            api_key_json = json.load(api_key_file)
+            # Validate JSON structure
+            if 'apikey' in api_key_json and 'insttoken' in api_key_json:
+                session['scopus_api_key'] = api_key_json
+                print("Scopus API Key successfully loaded and stored in session.")
+            else:
+                print("Invalid API Key JSON structure.")
+                return "Invalid API Key JSON structure. Please upload a valid API key.", 400
+        except json.JSONDecodeError:
+            print("Failed to decode JSON from API Key file.")
+            return "Invalid JSON file. Please upload a valid API key in JSON format.", 400
+    else:
+        print("No API Key file uploaded or invalid file type.")
+        return "No API Key file uploaded or invalid file type. Please upload a JSON file.", 400
 
     print(f"Extracted keywords: {[kw['word'] for kw in keywords]}", flush=True)
     print(f"Threshold: {threshold}, Number of Keywords: {num_keywords}", flush=True)
@@ -107,6 +136,12 @@ def start_sampling():
     threshold = session.get('threshold', 100)  # Default to 100 if not set
     outer_iterations = session.get('iterations', 10)  # Default to 10 if not set
 
+    # Retrieve Scopus API Key from the session
+    scopus_api_key = session.get('scopus_api_key', {})
+    if not scopus_api_key:
+        print("No Scopus API Key found in session.")
+        return "Scopus API Key not found. Please upload your API key.", 400
+
     if not weight_dict:
         print("No keywords available for sampling. Redirecting to index.", flush=True)
         return redirect(url_for('index'))
@@ -135,15 +170,22 @@ def start_sampling():
             update_progress(sampling_id, outer_iter, selected_keyword, query, match_count)
             print(f"Progress Update - Outer Iteration {outer_iter}: Query='{query}' | Matches={match_count}")
 
-        ranked = mock_sampling_process(weight_dict, threshold, outer_iterations, progress_callback=progress_callback)
+        #ranked = mock_sampling_process(weight_dict, threshold, outer_iterations, progress_callback=progress_callback)
+        # Call scopus_sampling_process with the API key
+        ranked = scopus_sampling_process(
+            weight_dict=weight_dict,
+            threshold=threshold,
+            outer_iterations=outer_iterations,
+            progress_callback=progress_callback,
+            scopus_api_key=scopus_api_key
+            )
+
         ranked_results[sampling_id] = ranked
         progress_info[sampling_id]['status'] = 'completed'
         print(f"Sampling thread for Sampling ID: {sampling_id} completed.")
 
-
-
     # Start the mock sampling in a separate thread
-    thread = threading.Thread(target=run_sampling)
+    thread = threading.Thread(target=run_sampling, daemon=True)
     thread.start()
 
     return render_template('processing.html', sampling_id=sampling_id)
