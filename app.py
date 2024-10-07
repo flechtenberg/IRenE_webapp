@@ -1,16 +1,48 @@
 # app.py
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response, flash
 import os
 import threading
 import uuid
 import json
-from werkzeug.utils import secure_filename
-from backend.processing import extract_seed, get_keywords, mock_sampling_process, scopus_sampling_process
+from backend.processing import (extract_seed, get_keywords, scopus_sampling_process)
+import logging
+from logging.handlers import TimedRotatingFileHandler
+
+# Create logs directory if it doesn't exist
+if not os.path.exists('logs'):
+    os.mkdir('logs')
+
+# Configure logging
+def setup_logging():
+    # Create a file handler that logs debug and higher level messages
+    log_formatter = logging.Formatter(
+        '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+    )
+
+    log_file = os.path.join('logs', 'app.log')
+
+    # Create a rotating file handler that creates a new log file every day
+    file_handler = TimedRotatingFileHandler(
+        log_file, when='midnight', interval=1, backupCount=7
+    )
+    file_handler.setFormatter(log_formatter)
+    file_handler.setLevel(logging.INFO)
+
+    # Add the handler to the app's logger
+    app.logger.addHandler(file_handler)
+    app.logger.setLevel(logging.INFO)
+
+    # Log that logging is set up
+    app.logger.info('Logging setup complete.')
+
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
 app.config['MAX_CONTENT_LENGTH'] = 2 * 16 * 1024 * 1024  # 32 MB
+
+# Call the logging setup function
+setup_logging()
 
 # Global dictionaries to store progress and results
 progress_info = {}
@@ -28,10 +60,48 @@ def index():
     return render_template('index.html')
 
 
+def load_scopus_api_key(request):
+    """
+    Loads and validates the Scopus API key file from the request.
+    Raises an exception if fields are missing or the file is invalid, stopping the process immediately.
+    """
+    api_key_file = request.files.get('scopusApiKey')
+
+    # Check if file is provided and if it's a valid JSON file
+    if not api_key_file or not allowed_file(api_key_file.filename):
+        flash("No API Key file uploaded or invalid file type. Please upload a valid JSON file.", "error")
+        return redirect(url_for('index'))
+
+    try:
+        # Try to load the file as JSON
+        api_key_json = json.load(api_key_file)
+
+        # Validate that 'apikey' and 'insttoken' are present in the JSON
+        if 'apikey' in api_key_json and 'insttoken' in api_key_json:
+            # Store the valid API key in the session
+            session['scopus_api_key'] = api_key_json
+            return None  # No error, continue execution
+        else:
+            # Missing required fields in the JSON
+            flash("Invalid API Key structure: Missing 'apikey' or 'insttoken'.", "error")
+            return redirect(url_for('index'))
+
+    except json.JSONDecodeError as e:
+        # Handle invalid JSON format
+        flash("Invalid JSON file. Please upload a correctly formatted JSON file.", "error")
+        return redirect(url_for('index'))
+
+    except Exception as e:
+        # Catch any other unexpected errors
+        flash(f"An unexpected error occurred: {e}", "error")
+        return redirect(url_for('index'))
+
+
 @app.route('/extract_keywords', methods=['POST'])
 def extract_keywords():
     # Check if the user has uploaded both seedCorpus and scopusApiKey
     if 'seedCorpus' not in request.files or 'scopusApiKey' not in request.files:
+        flash("Please upload both the seed corpus and Scopus API key.", "error")
         return redirect(url_for('index'))
 
     files = request.files.getlist('seedCorpus')
@@ -42,6 +112,11 @@ def extract_keywords():
     # Process the uploaded files and extract seed data
     seed_data = extract_seed(files)
 
+    # Process Scopus API Key, and handle the case where it redirects
+    api_key_error = load_scopus_api_key(request)
+    if api_key_error:
+        return api_key_error  # If an error occurred, stop and redirect
+
     # Extract keywords using backend function
     keywords = get_keywords(seed_data, num_keywords)
 
@@ -49,31 +124,12 @@ def extract_keywords():
     session['threshold'] = threshold
     session['iterations'] = iterations
 
-    # Process Scopus API Key
-    api_key_file = request.files['scopusApiKey']
-    if api_key_file and allowed_file(api_key_file.filename):
-        filename = secure_filename(api_key_file.filename)
-        try:
-            api_key_json = json.load(api_key_file)
-            # Validate JSON structure
-            if 'apikey' in api_key_json and 'insttoken' in api_key_json:
-                session['scopus_api_key'] = api_key_json
-                print("Scopus API Key successfully loaded and stored in session.")
-            else:
-                print("Invalid API Key JSON structure.")
-                return "Invalid API Key JSON structure. Please upload a valid API key.", 400
-        except json.JSONDecodeError:
-            print("Failed to decode JSON from API Key file.")
-            return "Invalid JSON file. Please upload a valid API key in JSON format.", 400
-    else:
-        print("No API Key file uploaded or invalid file type.")
-        return "No API Key file uploaded or invalid file type. Please upload a JSON file.", 400
-
-    print(f"Extracted keywords: {[kw['word'] for kw in keywords]}", flush=True)
-    print(f"Threshold: {threshold}, Number of Keywords: {num_keywords}", flush=True)
-    print(f"Iterations: {iterations}", flush=True)
+    app.logger.info(f"Extracted keywords: {[kw['word'] for kw in keywords]}")
+    app.logger.info(f"Threshold: {threshold}, Number of Keywords: {num_keywords}")
+    app.logger.info(f"Iterations: {iterations}")
 
     return render_template('refine_keywords.html', keywords=keywords)
+
 
 
 @app.route('/process_refined_keywords', methods=['POST'])
@@ -107,7 +163,7 @@ def process_refined_keywords():
     # Store the weight dictionary in the session
     session['weight_dict'] = weight_dict
 
-    print(f"Processed refined keywords: {weight_dict}", flush=True)
+    app.logger.info(f"Processed refined keywords: {weight_dict}")
 
     # Render the auto-submit page to start the sampling process
     return render_template('auto_submit_start_sampling.html')
@@ -148,11 +204,11 @@ def start_sampling():
     # Retrieve Scopus API Key from the session
     scopus_api_key = session.get('scopus_api_key', {})
     if not scopus_api_key:
-        print("No Scopus API Key found in session.")
+        app.logger.warning("No Scopus API Key found in session.")
         return "Scopus API Key not found. Please upload your API key.", 400
 
     if not weight_dict:
-        print("No keywords available for sampling. Redirecting to index.", flush=True)
+        app.logger.warning("No keywords available for sampling. Redirecting to index.", flush=True)
         return redirect(url_for('index'))
 
     # Generate a unique sampling ID
@@ -173,14 +229,13 @@ def start_sampling():
 
     # Define the sampling thread function
     def run_sampling():
-        print(f"Starting sampling thread for Sampling ID: {sampling_id}")
+        app.logger.info(f"Starting sampling thread for Sampling ID: {sampling_id}")
 
         # Define the progress_callback
         def progress_callback(outer_iter, query, match_count):
             update_progress(sampling_id, outer_iter, outer_iterations, query, match_count)
-            print(f"Progress Update - Outer Iteration {outer_iter}: Query='{query}' | Matches={match_count}")
+            #app.logger.info(f"Progress Update - Outer Iteration {outer_iter}: Query='{query}' | Matches={match_count}")
 
-        #ranked = mock_sampling_process(weight_dict, threshold, outer_iterations, progress_callback=progress_callback)
         # Call scopus_sampling_process with the API key
         ranked = scopus_sampling_process(
             weight_dict=weight_dict,
@@ -192,9 +247,9 @@ def start_sampling():
 
         ranked_results[sampling_id] = ranked
         progress_info[sampling_id]['status'] = 'completed'
-        print(f"Sampling thread for Sampling ID: {sampling_id} completed.")
+        app.logger.info(f"Sampling thread for Sampling ID: {sampling_id} completed.")
 
-    # Start the mock sampling in a separate thread
+    # Start the sampling in a separate thread
     thread = threading.Thread(target=run_sampling, daemon=True)
     thread.start()
 
@@ -211,13 +266,13 @@ def sampling_progress(sampling_id):
 def results():
     sampling_id = session.get('sampling_id', None)
     if not sampling_id or sampling_id not in ranked_results:
-        print(f"No sampling results found for Sampling ID: {sampling_id}", flush=True)
+        app.logger.warning(f"No sampling results found for Sampling ID: {sampling_id}")
         return redirect(url_for('index'))
 
     ranked_papers = ranked_results.get(sampling_id, [])
 
     if not ranked_papers:
-        print(f"Ranked papers list is empty for Sampling ID: {sampling_id}", flush=True)
+        app.logger.warning(f"Ranked papers list is empty for Sampling ID: {sampling_id}")
 
     return render_template('results.html', papers=ranked_papers)
 
@@ -271,14 +326,6 @@ def download_results():
         mimetype='text/csv; charset=utf-8',
         headers={'Content-Disposition': 'attachment;filename=results.csv'}
     )
-
-    # Return the CSV data as an HTTP response with appropriate headers
-    return Response(
-        output,
-        mimetype='text/csv; charset=utf-8',
-        headers={'Content-Disposition': 'attachment;filename=results.csv'}
-    )
-
 
 
 @app.route('/settings', methods=['GET', 'POST'])
