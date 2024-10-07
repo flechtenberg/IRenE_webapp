@@ -6,7 +6,7 @@ import threading
 import uuid
 import json
 from werkzeug.utils import secure_filename
-from backend.processing import extract_seed, get_keywords, mock_sampling_process, scopus_sampling_process
+from backend.processing import (extract_seed, get_keywords, scopus_sampling_process)
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
@@ -195,7 +195,6 @@ def start_sampling():
             update_progress(sampling_id, outer_iter, outer_iterations, query, match_count)
             print(f"Progress Update - Outer Iteration {outer_iter}: Query='{query}' | Matches={match_count}")
 
-        #ranked = mock_sampling_process(weight_dict, threshold, outer_iterations, progress_callback=progress_callback)
         # Call scopus_sampling_process with the API key
         ranked = scopus_sampling_process(
             weight_dict=weight_dict,
@@ -209,7 +208,7 @@ def start_sampling():
         progress_info[sampling_id]['status'] = 'completed'
         print(f"Sampling thread for Sampling ID: {sampling_id} completed.")
 
-    # Start the mock sampling in a separate thread
+    # Start the sampling in a separate thread
     thread = threading.Thread(target=run_sampling, daemon=True)
     thread.start()
 
