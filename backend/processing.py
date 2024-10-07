@@ -13,6 +13,10 @@ import time
 from elsapy.elsclient import ElsClient
 from elsapy.elssearch import ElsSearch
 from requests.exceptions import RequestException
+import logging
+
+# Get the logger instance
+logger = logging.getLogger('app')
 
 # Load spaCy English model
 nlp = spacy.load('en_core_web_sm')
@@ -183,7 +187,7 @@ def weighted_random_selection(keywords, weights):
     """
     total_weight = sum(weights)
     if total_weight == 0:
-        print("Total weight is zero. No keyword can be selected.", flush=True)
+        logger.info("Total weight is zero. No keyword can be selected.")
         return None
     probabilities = [w / total_weight for w in weights]
     selected_keyword = np.random.choice(keywords, p=probabilities)
@@ -193,8 +197,7 @@ def weighted_random_selection(keywords, weights):
         weight = weights[selected_index]
         print(f"Selected keyword: '{selected_keyword}' with weight {weight}", flush=True)
     except ValueError:
-        print(f"Selected keyword '{selected_keyword}' not found in keywords list.", flush=True)
-        weight = 0.0
+        logger.error(f"Selected keyword '{selected_keyword}' not found in keywords list.", flush=True)
 
     return selected_keyword
 
@@ -232,7 +235,6 @@ def execute_search_scopus(query, scopus_api_key, threshold=1000):
     try:
         doc_srch.execute(client, get_all=False)
         num_results = doc_srch.tot_num_res
-        print(f"Scopus API Query '{query}' matched {num_results} articles.")
 
         if num_results > 0 and num_results <= threshold:
             doc_srch.execute(client, get_all=True)
@@ -257,17 +259,17 @@ def execute_search_scopus(query, scopus_api_key, threshold=1000):
 
     except RequestException as req_err:
         # Handle issues with network or API request
-        print(f"Network or API request error during Scopus API call: {req_err}")
+        logger.error(f"Network or API request error during Scopus API call: {req_err}")
         return 0, set()
 
     except KeyError as key_err:
         # Handle missing data in the response
-        print(f"Missing expected data in Scopus API response: {key_err}")
+        logger.error(f"Missing expected data in Scopus API response: {key_err}")
         return 0, set()
 
     except Exception as e:
         # General catch-all for other unforeseen errors
-        print(f"Unexpected error during Scopus API call: {e}")
+        logger.error(f"Unexpected error during Scopus API call: {e}")
         return 0, set()
 
 
@@ -286,7 +288,7 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
     - ranked_papers: List of dictionaries containing paper information, sorted by occurrences.
     """
     if not scopus_api_key:
-        print("No Scopus API Key provided. Cannot perform real sampling.")
+        logger.warning("No Scopus API Key provided. Cannot perform real sampling.")
         return []
 
     keywords = list(weight_dict.keys())
@@ -300,11 +302,11 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
         while True:
             selected_keyword = weighted_random_selection(keywords, weights)
             if not selected_keyword:
-                print("No keyword selected. Ending inner iterations.")
+                logger.warning("No keyword selected. Ending inner iterations.")
                 break
             # Prevent adding duplicate keywords
             if selected_keyword in search_keywords:
-                print(f"Keyword '{selected_keyword}' already in query. Selecting a different keyword.")
+                logger.warning(f"Keyword '{selected_keyword}' already in query. Selecting a different keyword.")
                 continue
             search_keywords.append(selected_keyword)
             query = construct_search_query(search_keywords)
@@ -331,7 +333,7 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
                 paper['occurrences'] = 1
                 paper_rank_counts[scopus_id] = paper
 
-            print(f"Recorded paper: {scopus_id} | Current occurrences: {paper_rank_counts[scopus_id]['occurrences']}")
+            #print(f"Recorded paper: {scopus_id} | Current occurrences: {paper_rank_counts[scopus_id]['occurrences']}")
 
         # Add a small delay after each outer iteration
         time.sleep(0.1)
