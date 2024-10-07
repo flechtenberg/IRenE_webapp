@@ -1,6 +1,7 @@
 # app.py
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response, flash
+from flask_talisman import Talisman
 import os
 import threading
 import uuid
@@ -38,6 +39,36 @@ def setup_logging():
 
 
 app = Flask(__name__)
+
+csp = {
+    'default-src': [
+        "'self'",
+        'https://stackpath.bootstrapcdn.com',  # Bootstrap CDN
+        'https://cdn.jsdelivr.net',           # Any other CDN you're using
+    ],
+    'script-src': [
+        "'self'",
+        "'unsafe-inline'",  # Allows inline scripts (use with caution)
+        'https://code.jquery.com',  # jQuery CDN
+    ],
+    'style-src': [
+        "'self'",
+        "'unsafe-inline'",  # Allows inline styles
+        'https://stackpath.bootstrapcdn.com',  # Bootstrap CSS
+    ],
+    'img-src': [
+        "'self'",
+        'data:',  # Allows data URIs for images
+    ],
+    'font-src': [
+        "'self'",
+        'https://fonts.gstatic.com',  # Google Fonts
+    ],
+}
+
+# Your custom CSP defined above
+Talisman(app, content_security_policy=csp)
+
 app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
 app.config['MAX_CONTENT_LENGTH'] = 2 * 16 * 1024 * 1024  # 32 MB
 
