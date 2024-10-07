@@ -11,3 +11,6 @@ PyPDF2
 pandas
 numpy
 elsapy
+mkdocs
+mkdocs-material
+mkdocstrings
