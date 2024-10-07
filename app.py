@@ -5,7 +5,6 @@ import os
 import threading
 import uuid
 import json
-from werkzeug.utils import secure_filename
 from backend.processing import (extract_seed, get_keywords, scopus_sampling_process)
 
 app = Flask(__name__)
