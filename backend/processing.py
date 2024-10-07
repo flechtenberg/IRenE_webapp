@@ -321,30 +321,4 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
 
 # Main block for standalone testing
 if __name__ == "__main__":
-    # Sample weight_dict based on your example
-    weight_dict = {
-        'Process': 0.6,
-        'Game': 0.4,
-        'Coalition': 0.2,
-        'Money': 0.1,
-        'Power': 0.3,
-        'Energy': 0.5,
-        'Heat': 0.2,
-        'Cold': 0.1,
-        'Climate': 0.4,
-    }
-
-    # Define a threshold
-    threshold = 40  # Adjust as needed
-
-    # Define the number of outer iterations
-    outer_iterations = 10  # As per your requirement
-
-    # Execute the sampling process
-    print("Starting mock sampling process...\n", flush=True)
-    ranked_papers = mock_sampling_process(weight_dict, threshold, outer_iterations)
-
-    # Print the ranked list
-    print("\n--- Ranked List of Papers ---", flush=True)
-    for paper, count in ranked_papers:
-        print(f"Paper: {paper} | Rank Count: {count}", flush=True)
+    1+1
