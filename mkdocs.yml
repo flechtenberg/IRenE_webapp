@@ -1,5 +1,5 @@
 site_name: IRenE Webapp Documentation
-site_url: https://flechtenberg.github.io/irene-webapp/
+site_url: https://flechtenberg.github.io/IRenE_webapp/
 
 theme:
   name: material
