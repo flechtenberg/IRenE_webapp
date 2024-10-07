@@ -28,13 +28,15 @@ additional_stop_words = {
 
 def extract_seed(files):
     """
-    Extract text from uploaded PDF files and compile into a single string.
+    Extract text from uploaded PDF files and compile into a list of strings.
+    Each element in the list corresponds to one document.
     """
-    seed_text = ""
+    seed_texts = []
     for file in files:
         text = extract_text_from_pdf(file)
-        seed_text += text + " "
-    return seed_text
+        seed_texts.append(text)
+    return seed_texts
+
 
 class PDFProcessingError(Exception):
     """Custom exception for PDF processing errors."""
@@ -102,7 +104,7 @@ def preprocess_text(text):
     return cleaned_text
 
 
-def get_keywords(seed_text, num_keywords):
+def get_keywords(seed_texts, num_keywords):
     """
     Extract top 'num_keywords' keywords using TF-IDF with enhanced preprocessing.
     Returns a list of dictionaries with 'word' and 'weight'.
@@ -116,17 +118,20 @@ def get_keywords(seed_text, num_keywords):
         stop_words=combined_stop_words,  # Now a list
         max_features=num_keywords,
         token_pattern=r'\b[a-zA-Z]{2,}\b',  # Tokens with at least two letters
-        ngram_range=(1, 2),  # Include unigrams and bigrams
+        ngram_range=(1, 1),  # Include unigrams and bigrams
         smooth_idf=True,
         sublinear_tf=True
     )
 
-    tfidf_matrix = vectorizer.fit_transform([seed_text])
+    # Fit and transform the list of documents
+    tfidf_matrix = vectorizer.fit_transform(seed_texts)
     feature_names = vectorizer.get_feature_names_out()
-    scores = tfidf_matrix.toarray()[0]
+
+    # Sum TF-IDF scores across all documents
+    scores = tfidf_matrix.sum(axis=0).A1  # Convert to 1D array
     keywords = sorted(zip(feature_names, scores), key=lambda x: x[1], reverse=True)
 
-    # Exclude any bigram containing stop words
+    # Filter and select top keywords
     filtered_keywords = []
     for word, weight in keywords:
         words = word.split()
@@ -137,15 +142,6 @@ def get_keywords(seed_text, num_keywords):
         filtered_keywords.append({'word': word, 'weight': round(weight, 2)})
         if len(filtered_keywords) == num_keywords:
             break
-
-    # If not enough keywords after filtering, include more
-    if len(filtered_keywords) < num_keywords:
-        for word, weight in keywords[len(filtered_keywords):]:
-            if re.search(r'\d', word):
-                continue
-            filtered_keywords.append({'word': word, 'weight': round(weight, 2)})
-            if len(filtered_keywords) == num_keywords:
-                break
 
     return filtered_keywords
 
