@@ -7,7 +7,6 @@ import uuid
 import json
 from backend.processing import (extract_seed, get_keywords, scopus_sampling_process)
 import logging
-import os
 from logging.handlers import TimedRotatingFileHandler
 
 # Create logs directory if it doesn't exist

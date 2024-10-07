@@ -1,8 +1,6 @@
 # backend/processing.py
 
-import pandas as pd
 import numpy as np
-import os
 import re
 import spacy
 import PyPDF2
