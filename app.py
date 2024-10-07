@@ -1,6 +1,6 @@
 # app.py
 
-from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response, flash
 import os
 import threading
 import uuid
@@ -63,13 +63,14 @@ def index():
 def load_scopus_api_key(request):
     """
     Loads and validates the Scopus API key file from the request.
+    Raises an exception if fields are missing or the file is invalid, stopping the process immediately.
     """
     api_key_file = request.files.get('scopusApiKey')
 
     # Check if file is provided and if it's a valid JSON file
     if not api_key_file or not allowed_file(api_key_file.filename):
-        app.logger.warning("No API Key file uploaded or invalid file type.")
-        return "No API Key file uploaded or invalid file type. Please upload a valid JSON file.", 400
+        flash("No API Key file uploaded or invalid file type. Please upload a valid JSON file.", "error")
+        return redirect(url_for('index'))
 
     try:
         # Try to load the file as JSON
@@ -79,28 +80,28 @@ def load_scopus_api_key(request):
         if 'apikey' in api_key_json and 'insttoken' in api_key_json:
             # Store the valid API key in the session
             session['scopus_api_key'] = api_key_json
-            app.logger.info("Scopus API Key successfully loaded and stored.")
-            return "Scopus API Key successfully loaded and stored.", 200
+            return None  # No error, continue execution
         else:
             # Missing required fields in the JSON
-            app.logger.warning("Invalid API Key structure: Missing 'apikey' or 'insttoken'.")
-            return "Invalid API Key structure. Please make sure your file contains 'apikey' and 'insttoken'.", 400
+            flash("Invalid API Key structure: Missing 'apikey' or 'insttoken'.", "error")
+            return redirect(url_for('index'))
 
     except json.JSONDecodeError as e:
         # Handle invalid JSON format
-        app.logger.error(f"Invalid JSON file: {e}")
-        return "Invalid JSON file. Please upload a correctly formatted JSON file.", 400
+        flash("Invalid JSON file. Please upload a correctly formatted JSON file.", "error")
+        return redirect(url_for('index'))
 
     except Exception as e:
         # Catch any other unexpected errors
-        app.logger.exception(f"An unexpected error occurred while loading Scopus API Key: {e}")
-        return "An unexpected error occurred while processing your request.", 500
+        flash(f"An unexpected error occurred: {e}", "error")
+        return redirect(url_for('index'))
 
 
 @app.route('/extract_keywords', methods=['POST'])
 def extract_keywords():
     # Check if the user has uploaded both seedCorpus and scopusApiKey
     if 'seedCorpus' not in request.files or 'scopusApiKey' not in request.files:
+        flash("Please upload both the seed corpus and Scopus API key.", "error")
         return redirect(url_for('index'))
 
     files = request.files.getlist('seedCorpus')
@@ -111,6 +112,11 @@ def extract_keywords():
     # Process the uploaded files and extract seed data
     seed_data = extract_seed(files)
 
+    # Process Scopus API Key, and handle the case where it redirects
+    api_key_error = load_scopus_api_key(request)
+    if api_key_error:
+        return api_key_error  # If an error occurred, stop and redirect
+
     # Extract keywords using backend function
     keywords = get_keywords(seed_data, num_keywords)
 
@@ -118,14 +124,12 @@ def extract_keywords():
     session['threshold'] = threshold
     session['iterations'] = iterations
 
-    # Process Scopus API Key
-    load_scopus_api_key(request)
-
     app.logger.info(f"Extracted keywords: {[kw['word'] for kw in keywords]}")
     app.logger.info(f"Threshold: {threshold}, Number of Keywords: {num_keywords}")
     app.logger.info(f"Iterations: {iterations}")
 
     return render_template('refine_keywords.html', keywords=keywords)
+
 
 
 @app.route('/process_refined_keywords', methods=['POST'])
