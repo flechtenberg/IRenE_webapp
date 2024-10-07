@@ -15,8 +15,12 @@ from logging.handlers import TimedRotatingFileHandler
 if not os.path.exists('logs'):
     os.mkdir('logs')
 
-# Configure logging
+app = Flask(__name__)
+
 def setup_logging():
+    """
+    Configure logging for the Flask application.
+    """
     # Create a file handler that logs debug and higher level messages
     log_formatter = logging.Formatter(
         '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
@@ -37,9 +41,6 @@ def setup_logging():
 
     # Log that logging is set up
     app.logger.info('Logging setup complete.')
-
-
-app = Flask(__name__)
 
 csp = {
     'default-src': [
@@ -67,7 +68,7 @@ csp = {
     ],
 }
 
-# Your custom CSP defined above
+# Apply Content Security Policy using Talisman
 Talisman(app, content_security_policy=csp)
 
 app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
@@ -92,19 +93,45 @@ ranked_results = {}
 ALLOWED_EXTENSIONS = {'json'}
 
 def allowed_file(filename):
+    """
+    Check if a filename has an allowed extension.
+    """
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 @app.route('/')
 def index():
+    """
+    Render the home page of the application.
+
+    This route serves the landing page where users can upload their seed corpus
+    and Scopus API key. It also clears any existing 'scopus_api_key' from the session
+    to ensure a fresh start for each new session.
+
+    Returns:
+    - Response: Renders the 'index.html' template.
+    """
     session.pop('scopus_api_key', None)
     return render_template('index.html')
 
-
 def load_scopus_api_key(request):
     """
-    Loads and validates the Scopus API key file from the request.
-    Raises an exception if fields are missing or the file is invalid, stopping the process immediately.
+    Load and validate the Scopus API key file from the request.
+
+    Parameters:
+    - request (Request): The Flask request object containing the uploaded files.
+
+    Returns:
+    - None: If the API key is successfully loaded and validated.
+    - Response: Redirects to the index page with an error message if validation fails.
+
+    This function performs the following steps:
+    - Checks if the 'scopusApiKey' file is present in the request and has a valid extension.
+    - Attempts to parse the file as JSON.
+    - Validates that the JSON contains 'apikey' and 'insttoken' fields.
+    - Stores the valid API key in the session.
+
+    If any step fails, it flashes an error message to the user and redirects to the index page.
     """
     api_key_file = request.files.get('scopusApiKey')
 
@@ -137,9 +164,24 @@ def load_scopus_api_key(request):
         flash(f"An unexpected error occurred: {e}", "error")
         return redirect(url_for('index'))
 
-
 @app.route('/extract_keywords', methods=['POST'])
 def extract_keywords():
+    """
+    Process the uploaded seed corpus and Scopus API key to extract initial keywords.
+
+    This route handles the form submission from the index page. It performs the following steps:
+    - Validates that both 'seedCorpus' and 'scopusApiKey' files are provided.
+    - Retrieves form data for 'threshold', 'num_keywords', and 'iterations'.
+    - Calls 'extract_seed' to process the uploaded PDF files and extract text.
+    - Calls 'load_scopus_api_key' to validate and store the Scopus API key.
+    - Calls 'get_keywords' to extract keywords from the seed data.
+    - Logs extracted keywords and parameters.
+    - Renders 'refine_keywords.html' template for user to refine the keywords.
+
+    Returns:
+    - Response: Renders 'refine_keywords.html' with extracted keywords.
+    - Redirect: Redirects to 'index' if validation fails.
+    """
     # Check if the user has uploaded both seedCorpus and scopusApiKey
     if 'seedCorpus' not in request.files or 'scopusApiKey' not in request.files:
         flash("Please upload both the seed corpus and Scopus API key.", "error")
@@ -171,10 +213,22 @@ def extract_keywords():
 
     return render_template('refine_keywords.html', keywords=keywords)
 
-
-
 @app.route('/process_refined_keywords', methods=['POST'])
 def process_refined_keywords():
+    """
+    Process the refined keywords and their weights submitted by the user.
+
+    This route handles the form submission from the 'refine_keywords' page. It performs the following steps:
+    - Retrieves selected keywords and their corresponding weights from the form data.
+    - Handles any new keywords and weights added by the user.
+    - Constructs a 'weight_dict' mapping keywords to their weights.
+    - Stores 'weight_dict' in the session for use in the sampling process.
+    - Logs the processed keywords and weights.
+    - Renders 'auto_submit_start_sampling.html' to automatically initiate sampling.
+
+    Returns:
+    - Response: Renders 'auto_submit_start_sampling.html' to start sampling.
+    """
     # Retrieve selected keywords and weights from the form
     selected_keywords = request.form.getlist('selected_keywords')
     weight_dict = {}
@@ -209,10 +263,22 @@ def process_refined_keywords():
     # Render the auto-submit page to start the sampling process
     return render_template('auto_submit_start_sampling.html')
 
-
 def update_progress(sampling_id, outer_iter, outer_iterations, query, match_count):
     """
-    Update the progress_info dictionary with the latest iteration details.
+    Update the progress information for a given sampling ID during the sampling process.
+
+    Parameters:
+    - sampling_id (str): Unique identifier for the sampling process.
+    - outer_iter (int): Current outer iteration number.
+    - outer_iterations (int): Total number of outer iterations.
+    - query (str): The current search query being processed.
+    - match_count (int): Number of matches returned by the current query.
+
+    This function updates the 'progress_info' global dictionary with the latest iteration details,
+    including the current iteration, query, match count, and appends to the history.
+
+    The 'progress_info' is used to track the sampling progress and is accessed by the
+    '/sampling_progress/<sampling_id>' route to provide real-time updates to the user.
     """
     if sampling_id not in progress_info:
         progress_info[sampling_id] = {
@@ -230,13 +296,27 @@ def update_progress(sampling_id, outer_iter, outer_iterations, query, match_coun
 
     # Append to history
     progress_info[sampling_id]['history'].append({
-                                                     'outer_iteration': outer_iter,
-                                                     'query': query,
-                                                     'match_count': match_count
-                                                 })
+        'outer_iteration': outer_iter,
+        'query': query,
+        'match_count': match_count
+    })
 
 @app.route('/start_sampling', methods=['POST'])
 def start_sampling():
+    """
+    Initiate the sampling process using the refined keywords and parameters.
+
+    This route performs the following steps:
+    - Retrieves 'weight_dict', 'threshold', and 'iterations' from the session.
+    - Validates again the presence of the Scopus API key.
+    - Generates a unique 'sampling_id' and initializes progress tracking.
+    - Defines and starts a background thread to run the sampling process.
+    - Renders 'processing.html' to display sampling progress to the user.
+
+    Returns:
+    - Response: Renders 'processing.html' with the 'sampling_id'.
+    - Response: Returns an error message if required data is missing.
+    """
     # Retrieve refined keywords and parameters from the session
     weight_dict = session.get('weight_dict', {})
     threshold = session.get('threshold', 100)  # Default to 100 if not set
@@ -284,7 +364,7 @@ def start_sampling():
             outer_iterations=outer_iterations,
             progress_callback=progress_callback,
             scopus_api_key=scopus_api_key
-            )
+        )
 
         ranked_results[sampling_id] = ranked
         progress_info[sampling_id]['status'] = 'completed'
@@ -296,15 +376,45 @@ def start_sampling():
 
     return render_template('processing.html', sampling_id=sampling_id)
 
-
 @app.route('/sampling_progress/<sampling_id>')
 def sampling_progress(sampling_id):
+    """
+    Provide real-time progress updates for the sampling process.
+
+    Parameters:
+    - sampling_id (str): Unique identifier for the sampling process.
+
+    Returns:
+    - Response: A JSON object containing the current progress information for the given 'sampling_id'.
+
+    The progress information includes:
+    - 'current_outer_iteration': The current outer iteration number.
+    - 'outer_iterations': The total number of outer iterations.
+    - 'current_query': The most recent query executed.
+    - 'last_match_count': The number of matches from the last query.
+    - 'status': The current status of the sampling process ('running', 'completed', etc.).
+    - 'history': A list of dictionaries recording the history of queries and match counts.
+    """
     info = progress_info.get(sampling_id, {})
     return jsonify(info)
 
-
 @app.route('/results')
 def results():
+    """
+    Display the results of the sampling process to the user.
+
+    This route performs the following steps:
+    - Retrieves 'sampling_id' from the session.
+    - Validates that sampling results are available for the 'sampling_id'.
+    - Retrieves the ranked list of papers from 'ranked_results'.
+    - Logs warnings if results are missing.
+    - Clears 'scopus_api_key' from the session for security.
+    - Renders 'results.html' with the list of ranked papers.
+
+    Returns:
+    - Response: Renders 'results.html' with the sampling results.
+    - Redirect: Redirects to 'index' if no results are found.
+    """
     sampling_id = session.get('sampling_id', None)
     if not sampling_id or sampling_id not in ranked_results:
         app.logger.warning(f"No sampling results found for Sampling ID: {sampling_id}")
@@ -318,9 +428,24 @@ def results():
     session.pop('scopus_api_key', None)
     return render_template('results.html', papers=ranked_papers)
 
-
 @app.route('/download_results')
 def download_results():
+    """
+    Provide a downloadable CSV file containing the sampling results.
+
+    This route performs the following steps:
+    - Retrieves 'sampling_id' from the session.
+    - Validates that sampling results are available.
+    - Constructs a CSV file in memory containing the ranked papers.
+    - Sets appropriate headers to prompt the user to download the file.
+
+    Returns:
+    - Response: An HTTP response with the CSV data and headers for file download.
+    - Redirect: Redirects to 'index' if no results are found.
+
+    The CSV file includes the following fields:
+    - 'Occurrences', 'First Author', 'Year', 'Title', 'Journal', 'Citations', 'Open Access', 'Link'.
+    """
     sampling_id = session.get('sampling_id', None)
     if not sampling_id or sampling_id not in ranked_results:
         return redirect(url_for('index'))
@@ -369,14 +494,22 @@ def download_results():
         headers={'Content-Disposition': 'attachment;filename=results.csv'}
     )
 
-
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
+    """
+    Handle the settings page where users can view or update application settings.
+
+    Methods:
+    - GET: Renders the 'settings.html' template to display current settings.
+    - POST: Processes form submissions to update settings (currently a placeholder).
+
+    Returns:
+    - Response: Renders 'settings.html' template.
+    """
     if request.method == 'POST':
         # Handle settings update
         pass
     return render_template('settings.html')
-
 
 if __name__ == '__main__':
     app.run(debug=True)

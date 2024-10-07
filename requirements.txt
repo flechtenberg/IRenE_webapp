@@ -8,6 +8,5 @@ nltk
 spacy
 whitenoise
 PyPDF2
-pandas
 numpy
 elsapy
