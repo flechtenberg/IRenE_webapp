@@ -285,7 +285,7 @@ def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress
                 break
             # Prevent adding duplicate keywords
             if selected_keyword in search_keywords:
-                logger.warning(f"Keyword '{selected_keyword}' already in query. Selecting a different keyword.")
+                print(f"Keyword '{selected_keyword}' already in query. Selecting a different keyword.")
                 continue
             search_keywords.append(selected_keyword)
             query = construct_search_query(search_keywords)

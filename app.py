@@ -68,6 +68,7 @@ def load_scopus_api_key(request):
 
     # Check if file is provided and if it's a valid JSON file
     if not api_key_file or not allowed_file(api_key_file.filename):
+        app.logger.warning("No API Key file uploaded or invalid file type.")
         return "No API Key file uploaded or invalid file type. Please upload a valid JSON file.", 400
 
     try:
@@ -78,18 +79,22 @@ def load_scopus_api_key(request):
         if 'apikey' in api_key_json and 'insttoken' in api_key_json:
             # Store the valid API key in the session
             session['scopus_api_key'] = api_key_json
+            app.logger.info("Scopus API Key successfully loaded and stored.")
             return "Scopus API Key successfully loaded and stored.", 200
         else:
             # Missing required fields in the JSON
+            app.logger.warning("Invalid API Key structure: Missing 'apikey' or 'insttoken'.")
             return "Invalid API Key structure. Please make sure your file contains 'apikey' and 'insttoken'.", 400
 
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
         # Handle invalid JSON format
+        app.logger.error(f"Invalid JSON file: {e}")
         return "Invalid JSON file. Please upload a correctly formatted JSON file.", 400
 
     except Exception as e:
         # Catch any other unexpected errors
-        return f"An unexpected error occurred: {str(e)}", 500
+        app.logger.exception(f"An unexpected error occurred while loading Scopus API Key: {e}")
+        return "An unexpected error occurred while processing your request.", 500
 
 
 @app.route('/extract_keywords', methods=['POST'])
