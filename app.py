@@ -1,6 +1,7 @@
 # app.py
 
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, Response, flash
+from flask_session import Session
 from flask_talisman import Talisman
 import os
 import threading
@@ -71,6 +72,14 @@ Talisman(app, content_security_policy=csp)
 
 app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
 app.config['MAX_CONTENT_LENGTH'] = 2 * 16 * 1024 * 1024  # 32 MB
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['SESSION_FILE_DIR'] = os.path.join(app.instance_path, 'sessions')
+app.config['SESSION_PERMANENT'] = False
+app.config['SESSION_USE_SIGNER'] = True
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SECURE'] = True   # Set to True in production
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+Session(app)
 
 # Call the logging setup function
 setup_logging()
@@ -88,6 +97,7 @@ def allowed_file(filename):
 
 @app.route('/')
 def index():
+    session.pop('scopus_api_key', None)
     return render_template('index.html')
 
 
@@ -305,6 +315,7 @@ def results():
     if not ranked_papers:
         app.logger.warning(f"Ranked papers list is empty for Sampling ID: {sampling_id}")
 
+    session.pop('scopus_api_key', None)
     return render_template('results.html', papers=ranked_papers)
 
 
