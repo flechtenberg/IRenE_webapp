@@ -10,6 +10,7 @@ from backend.processing import extract_seed, get_keywords, mock_sampling_process
 
 app = Flask(__name__)
 app.secret_key = os.getenv('SECRET_KEY', 'your_default_secret_key')
+app.config['MAX_CONTENT_LENGTH'] = 2 * 16 * 1024 * 1024  # 16 MB
 
 # Global dictionaries to store progress and results
 progress_info = {}
