@@ -136,26 +136,7 @@ def get_keywords(seed_text, num_keywords):
     return filtered_keywords
 
 
-def load_scopus_data(filepath='data/scopus.csv'):
-    """
-    Load Scopus article metadata from a CSV file into a Pandas DataFrame.
-    """
-    try:
-        # Build absolute path relative to this script
-        base_dir = os.path.dirname(__file__)
-        full_path = os.path.join(base_dir, '..', filepath)
-        df = pd.read_csv(full_path)
-        # Convert 'Title' and 'Abstract' to lowercase for case-insensitive search
-        df['Title'] = df['Title'].str.lower()
-        df['Abstract'] = df['Abstract'].str.lower()
-        print(f"Loaded Scopus data with {df.shape[0]} entries.", flush=True)
-        return df
-    except FileNotFoundError:
-        print(f"Error: File not found at '{filepath}'. Please ensure the CSV file exists.", flush=True)
-        return pd.DataFrame()
-    except Exception as e:
-        print(f"Error loading CSV: {e}", flush=True)
-        return pd.DataFrame()
+
 
 
 _scopus_df = None
