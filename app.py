@@ -285,14 +285,6 @@ def download_results():
         headers={'Content-Disposition': 'attachment;filename=results.csv'}
     )
 
-    # Return the CSV data as an HTTP response with appropriate headers
-    return Response(
-        output,
-        mimetype='text/csv; charset=utf-8',
-        headers={'Content-Disposition': 'attachment;filename=results.csv'}
-    )
-
-
 
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
