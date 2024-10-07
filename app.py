@@ -28,6 +28,38 @@ def index():
     return render_template('index.html')
 
 
+def load_scopus_api_key(request):
+    """
+    Loads and validates the Scopus API key file from the request.
+    """
+    api_key_file = request.files.get('scopusApiKey')
+
+    # Check if file is provided and if it's a valid JSON file
+    if not api_key_file or not allowed_file(api_key_file.filename):
+        return "No API Key file uploaded or invalid file type. Please upload a valid JSON file.", 400
+
+    try:
+        # Try to load the file as JSON
+        api_key_json = json.load(api_key_file)
+
+        # Validate that 'apikey' and 'insttoken' are present in the JSON
+        if 'apikey' in api_key_json and 'insttoken' in api_key_json:
+            # Store the valid API key in the session
+            session['scopus_api_key'] = api_key_json
+            return "Scopus API Key successfully loaded and stored.", 200
+        else:
+            # Missing required fields in the JSON
+            return "Invalid API Key structure. Please make sure your file contains 'apikey' and 'insttoken'.", 400
+
+    except json.JSONDecodeError:
+        # Handle invalid JSON format
+        return "Invalid JSON file. Please upload a correctly formatted JSON file.", 400
+
+    except Exception as e:
+        # Catch any other unexpected errors
+        return f"An unexpected error occurred: {str(e)}", 500
+
+
 @app.route('/extract_keywords', methods=['POST'])
 def extract_keywords():
     # Check if the user has uploaded both seedCorpus and scopusApiKey
@@ -50,24 +82,7 @@ def extract_keywords():
     session['iterations'] = iterations
 
     # Process Scopus API Key
-    api_key_file = request.files['scopusApiKey']
-    if api_key_file and allowed_file(api_key_file.filename):
-        filename = secure_filename(api_key_file.filename)
-        try:
-            api_key_json = json.load(api_key_file)
-            # Validate JSON structure
-            if 'apikey' in api_key_json and 'insttoken' in api_key_json:
-                session['scopus_api_key'] = api_key_json
-                print("Scopus API Key successfully loaded and stored in session.")
-            else:
-                print("Invalid API Key JSON structure.")
-                return "Invalid API Key JSON structure. Please upload a valid API key.", 400
-        except json.JSONDecodeError:
-            print("Failed to decode JSON from API Key file.")
-            return "Invalid JSON file. Please upload a valid API key in JSON format.", 400
-    else:
-        print("No API Key file uploaded or invalid file type.")
-        return "No API Key file uploaded or invalid file type. Please upload a JSON file.", 400
+    load_scopus_api_key(request)
 
     print(f"Extracted keywords: {[kw['word'] for kw in keywords]}", flush=True)
     print(f"Threshold: {threshold}, Number of Keywords: {num_keywords}", flush=True)
