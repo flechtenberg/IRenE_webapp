@@ -28,8 +28,16 @@ additional_stop_words = {
 
 def extract_seed(files):
     """
-    Extract text from uploaded PDF files and compile into a list of strings.
-    Each element in the list corresponds to one document.
+    Extract text from a list of uploaded PDF files and return a list of preprocessed strings.
+
+    Each element in the returned list corresponds to the text content of one PDF document.
+    The text is preprocessed (e.g., cleaned of stopwords and punctuation) for further use.
+
+    Parameters:
+    - files (list): A list of PDF files uploaded by the user.
+
+    Returns:
+    - list: A list of preprocessed text strings, where each string represents the content of one PDF file.
     """
     seed_texts = []
     for file in files:
@@ -44,7 +52,16 @@ class PDFProcessingError(Exception):
 
 def extract_text_from_pdf(file):
     """
-    Extract text from a single PDF file and preprocess it.
+    Extract and preprocess text from a single PDF file.
+
+    This function reads through all the pages of the provided PDF file, extracts the text, and performs preprocessing
+    (such as cleaning, lowercasing, and tokenization) on the extracted text for further use in natural language processing tasks.
+
+    Parameters:
+    - file: A PDF file object from which text needs to be extracted.
+
+    Returns:
+    - str: A single preprocessed string containing the combined text from all pages of the PDF, ready for further analysis.
     """
     try:
         reader = PyPDF2.PdfReader(file)
@@ -73,8 +90,20 @@ nlp = spacy.load('en_core_web_sm')
 
 def preprocess_text(text):
     """
-    Preprocess the text by removing URLs, numbers, and references.
-    Additionally, use spaCy to filter out certain parts of speech and named entities.
+    Preprocess the input text by applying various cleaning and filtering steps for NLP tasks.
+
+    This function performs the following operations:
+    - Converts the text to lowercase.
+    - Removes URLs and numeric values.
+    - Utilizes spaCy for lemmatization, and filters out stop words, punctuation, and non-alphabetic tokens.
+    - Excludes tokens related to specific named entities (organizations, people, geopolitical entities, dates) and certain parts of speech (proper nouns, numbers).
+    - Custom stop words are also removed.
+
+    Parameters:
+    - text (str): The raw text to be processed.
+
+    Returns:
+    - str: A cleaned and preprocessed string where tokens have been lemmatized and unnecessary elements have been removed.
     """
     # Convert text to lowercase
     text = text.lower()
@@ -106,8 +135,24 @@ def preprocess_text(text):
 
 def get_keywords(seed_texts, num_keywords):
     """
-    Extract top 'num_keywords' keywords using TF-IDF with enhanced preprocessing.
-    Returns a list of dictionaries with 'word' and 'weight'.
+    Extract the top 'num_keywords' keywords from a list of documents using TF-IDF (Term Frequency-Inverse Document Frequency).
+
+    This function performs the following steps:
+    - Combines custom stop words with standard English stop words.
+    - Initializes a TfidfVectorizer to convert the text data into a matrix of TF-IDF features, considering unigrams only.
+    - Fits the TF-IDF model to the provided documents (seed_texts).
+    - Sums the TF-IDF scores across all documents to rank the importance of each keyword.
+    - Filters out numbers and stop words from the resulting keywords.
+
+    Parameters:
+    - seed_texts (list of str): A list where each element represents the (filtered) text of a document.
+    - num_keywords (int): The number of top keywords to extract.
+
+    Returns:
+    - list of dict: A list of dictionaries containing the top keywords and their corresponding TF-IDF scores.
+      Each dictionary has two keys:
+        - 'word': The keyword.
+        - 'weight': The TF-IDF score, rounded to two decimal places.
     """
 
     # Combine with English stop words from TfidfVectorizer
@@ -144,9 +189,6 @@ def get_keywords(seed_texts, num_keywords):
             break
 
     return filtered_keywords
-
-
-
 
 
 def weighted_random_selection(keywords, weights):
