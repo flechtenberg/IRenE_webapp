@@ -1,0 +1,10 @@
+-r requirements.txt  # This will include the production dependencies
+
+# Development tools
+mkdocs
+mkdocs-material
+mkdocstrings
+pytest
+pytest-flask
+flake8
+black
