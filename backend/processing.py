@@ -158,19 +158,6 @@ def load_scopus_data(filepath='data/scopus.csv'):
         return pd.DataFrame()
 
 
-_scopus_df = None
-
-
-def get_scopus_df():
-    """
-    Retrieve the cached Scopus DataFrame, loading it if necessary.
-    """
-    global _scopus_df
-    if _scopus_df is None or _scopus_df.empty:
-        _scopus_df = load_scopus_data('data/scopus.csv')
-    return _scopus_df
-
-
 def weighted_random_selection(keywords, weights):
     """
     Select a keyword based on weights.
@@ -205,33 +192,6 @@ def construct_search_query(selected_keywords):
     Construct a search query string using logical AND.
     """
     return ' AND '.join(selected_keywords)
-
-
-def execute_search(df, query):
-    """
-    Execute the search query on the DataFrame.
-
-    Parameters:
-    - df: Pandas DataFrame containing Scopus data.
-    - query: Search query string.
-
-    Returns:
-    - match_count: Number of matching articles.
-    - matched_papers: Set of unique paper identifiers (e.g., Links).
-    """
-    keywords = [kw.strip().lower() for kw in query.split(' AND ')]
-
-    # Apply the filter: articles where all keywords are in Title or Abstract
-    mask = df.apply(lambda row: all(
-        (kw in row['Title']) or (kw in row['Abstract']) for kw in keywords
-    ), axis=1)
-
-    matched_df = df[mask]
-    match_count = matched_df.shape[0]
-    matched_papers = set(matched_df['Link'])  # Using 'Link' as unique identifier
-
-    print(f"Query '{query}' matched {match_count} articles.", flush=True)
-    return match_count, matched_papers
 
 
 def execute_search_scopus(query, scopus_api_key, threshold=1000):
@@ -285,67 +245,6 @@ def execute_search_scopus(query, scopus_api_key, threshold=1000):
     except Exception as e:
         print(f"Exception during Scopus API call: {e}")
         return 0, set()
-
-
-def mock_sampling_process(weight_dict, threshold, outer_iterations=5, progress_callback=None):
-    """
-    Perform the mock sampling process with outer and inner iterations.
-
-    Parameters:
-    - weight_dict: Dict of keywords and their weights.
-    - threshold: The match count threshold.
-    - outer_iterations: Number of separate sampling runs.
-    - progress_callback: Function to call with progress updates.
-
-    Returns:
-    - ranked_papers: List of tuples (paper_link, count), sorted by count descending.
-    """
-    scopus_df = get_scopus_df()
-    if scopus_df.empty:
-        print("Scopus DataFrame is empty. Exiting sampling process.")
-        return []
-
-    keywords = list(weight_dict.keys())
-    weights = list(weight_dict.values())
-
-    paper_rank_counts = {}
-
-    for outer in range(1, outer_iterations + 1):
-        print(f"\n--- Outer Iteration {outer} ---")
-        search_keywords = []
-        while True:
-            selected_keyword = weighted_random_selection(keywords, weights)
-            if not selected_keyword:
-                print("No keyword selected. Ending inner iterations.")
-                break
-            search_keywords.append(selected_keyword)
-            query = construct_search_query(search_keywords)
-            match_count, matched_papers = execute_search(scopus_df, query)
-            print(f"Added '{selected_keyword}' | Query: '{query}' | Matches: {match_count}")
-
-            # Update progress
-            if progress_callback:
-                progress_callback(outer, query, match_count)
-
-            if match_count < threshold:
-                print(f"Match count {match_count} below threshold {threshold}. Ending inner iterations.")
-                break
-
-            # Add a small delay to simulate processing time
-            time.sleep(0.1)
-
-        # Record matched papers from the final inner iteration
-        for paper in matched_papers:
-            paper_rank_counts[paper] = paper_rank_counts.get(paper, 0) + 1
-            print(f"Recorded paper: {paper} | Current count: {paper_rank_counts[paper]}")
-
-        # Add a small delay after each outer iteration
-        time.sleep(0.1)
-
-    # Create a ranked list sorted by count descending
-    ranked_papers = sorted(paper_rank_counts.items(), key=lambda x: x[1], reverse=True)
-    print("\n--- Sampling Completed ---")
-    return ranked_papers
 
 
 def scopus_sampling_process(weight_dict, threshold, outer_iterations=5, progress_callback=None, scopus_api_key=None):
