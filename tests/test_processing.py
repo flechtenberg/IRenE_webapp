@@ -13,7 +13,7 @@ class TestProcessing(unittest.TestCase):
         processed_text = preprocess_text(raw_text)
         self.assertEqual(processed_text, expected_output)
 
-    def test_get_keywords_with_multiple_documents(self):
+    def test_get_keywords(self):
         # Simulate multiple documents by concatenating sentences
         document1 = (
             "Machine learning is a method of data analysis that automates analytical model building. "
@@ -32,14 +32,14 @@ class TestProcessing(unittest.TestCase):
         )
 
         # Combine the documents into one seed text
-        seed_text = f"{document1} {document2} {document3}"
+        seed_texts = [document1, document2, document3]
 
         num_keywords = 5
-        keywords = get_keywords(seed_text, num_keywords)
+        keywords = get_keywords(seed_texts, num_keywords)
         extracted_keywords = [kw['word'] for kw in keywords]
 
         # Expected keywords based on term frequency and importance
-        expected_keywords = ['data', 'machine learning', 'artificial intelligence', 'intelligence', 'machines']
+        expected_keywords = ['data', 'intelligence', 'systems', 'artificial', 'human']
 
         self.assertEqual(len(keywords), num_keywords)
         self.assertListEqual(extracted_keywords, expected_keywords)
