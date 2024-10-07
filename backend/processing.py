@@ -12,6 +12,7 @@ from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import time
 from elsapy.elsclient import ElsClient
 from elsapy.elssearch import ElsSearch
+from requests.exceptions import RequestException
 
 # Load spaCy English model
 nlp = spacy.load('en_core_web_sm')
@@ -293,8 +294,20 @@ def execute_search_scopus(query, scopus_api_key, threshold=1000):
             return match_count, matched_papers
         else:
             return num_results, set()
+
+    except RequestException as req_err:
+        # Handle issues with network or API request
+        print(f"Network or API request error during Scopus API call: {req_err}")
+        return 0, set()
+
+    except KeyError as key_err:
+        # Handle missing data in the response
+        print(f"Missing expected data in Scopus API response: {key_err}")
+        return 0, set()
+
     except Exception as e:
-        print(f"Exception during Scopus API call: {e}")
+        # General catch-all for other unforeseen errors
+        print(f"Unexpected error during Scopus API call: {e}")
         return 0, set()
 
 
