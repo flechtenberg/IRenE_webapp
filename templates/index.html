@@ -154,7 +154,7 @@
         <form action="{{ url_for('extract_keywords') }}" method="POST" enctype="multipart/form-data">
             <h2>Upload Seed Corpus</h2>
             <label>
-                <input type="file" name="seedCorpus" multiple required>
+                <input type="file" name="seedCorpus" multiple required accept=".pdf" required>
                 <span class="help-icon" tabindex="0">
                     <span class="tooltip">
                         You can upload one or multiple PDF files as your seed corpus. Use Ctrl+Click (Cmd+Click on Mac) to select multiple files.
