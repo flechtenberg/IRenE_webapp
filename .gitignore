@@ -171,3 +171,7 @@ poetry.toml
 pyrightconfig.json
 
 data/raw/
+
+dump.json
+logs/
+results.csv

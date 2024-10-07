@@ -39,39 +39,77 @@
             color: #4CAF50;
         }
 
-        ul {
-            list-style-type: none;
-            padding-left: 0;
+        #status, #current_outer {
+            font-weight: bold;
+        }
+
+        /* Styles for the progress bar */
+        #progress-container {
+            width: 100%;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
             margin-bottom: 1.5rem;
         }
 
-        ul li {
-            padding: 0.5rem;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            margin-bottom: 0.5rem;
-            background-color: #f9f9f9;
+        #progress-bar {
+            height: 20px;
+            background-color: #4CAF50;
+            width: 0%;
+            transition: width 0.3s ease-in-out;
         }
 
-        #status, #current_outer {
+        /* Styles for current information */
+        #current-info {
+            margin-top: 1rem;
+            font-size: 1.1rem;
+        }
+
+        #current-info p {
+            margin-bottom: 0.5rem;
+        }
+
+        #current-info span {
             font-weight: bold;
         }
 
         .loading-icon {
             display: block;
-            margin: 0 auto;
+            margin: 1.5rem auto 0 auto;
             width: 50px;
             height: 50px;
             border: 5px solid #f3f3f3;
             border-top: 5px solid #4CAF50;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin-top: 1.5rem;
         }
 
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* Styles for the search history */
+        #history-container {
+            margin-top: 2rem;
+        }
+
+        #history {
+            max-height: 200px; /* Adjust height as needed */
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 1rem;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        .history-item {
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .history-item span {
+            font-weight: bold;
         }
     </style>
     <script>
@@ -87,25 +125,29 @@
                     // Update current outer iteration
                     document.getElementById('current_outer').textContent = data.current_outer_iteration;
 
-                    // Update queries and match counts
-                    var queriesList = document.getElementById('queries');
-                    var matchesList = document.getElementById('matches_per_query');
+                    // Update current outer iteration
+                    document.getElementById('outer_iterations').textContent = data.outer_iterations;
 
-                    // Clear existing lists
-                    queriesList.innerHTML = '';
-                    matchesList.innerHTML = '';
+                    // Calculate and update progress bar
+                    var progressPercentage = (data.current_outer_iteration / data.outer_iterations) * 100;
+                    document.getElementById('progress-bar').style.width = progressPercentage + '%';
 
-                    // Populate new data
-                    data.queries.forEach(function(query, index) {
-                        var li = document.createElement('li');
-                        li.textContent = query;
-                        queriesList.appendChild(li);
-                    });
+                    // Update current query and last match count
+                    var currentQuery = data.current_query || '';
+                    var lastMatchCount = data.last_match_count || 0;
+                    document.getElementById('current_query').textContent = currentQuery;
+                    document.getElementById('last_match_count').textContent = lastMatchCount;
 
-                    data.matches_per_query.forEach(function(match, index) {
-                        var li = document.createElement('li');
-                        li.textContent = match;
-                        matchesList.appendChild(li);
+                    // Update search history
+                    var historyContainer = document.getElementById('history');
+                    historyContainer.innerHTML = ''; // Clear existing history
+
+                    data.history.forEach(function(item) {
+                        var div = document.createElement('div');
+                        div.classList.add('history-item');
+                        div.innerHTML = 'Iteration <span>' + item.outer_iteration + '</span> &mdash; ' +
+                                        '<span>' + item.query + '</span> &mdash; Matches: <span>' + item.match_count + '</span>';
+                        historyContainer.appendChild(div);
                     });
 
                     // Check if sampling is completed
@@ -128,18 +170,28 @@
     <section>
         <h2>Sampling in Progress...</h2>
 
+        <!-- Progress Bar -->
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+
+        <!-- Current Information -->
+        <div id="current-info">
+            <p>Current Outer Iteration: <span id="current_outer">0</span> / <span id="outer_iterations">0</span></p>
+            <p>Current Search String: <span id="current_query">N/A</span></p>
+            <p>Last Match Amount: <span id="last_match_count">0</span></p>
+        </div>
+
+        <!-- Status -->
         <p>Status: <span id="status">Running</span></p>
-        <p>Current Outer Iteration: <span id="current_outer">0</span></p>
 
-        <h3>Queries:</h3>
-        <ul id="queries">
-            <!-- Queries will be populated here -->
-        </ul>
-
-        <h3>Matches per Query:</h3>
-        <ul id="matches_per_query">
-            <!-- Match counts will be populated here -->
-        </ul>
+        <!-- Search History -->
+        <div id="history-container">
+            <h3>Search History</h3>
+            <div id="history">
+                <!-- History items will be populated here -->
+            </div>
+        </div>
 
         <div class="loading-icon"></div>
     </section>
