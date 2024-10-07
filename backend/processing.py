@@ -6,6 +6,7 @@ import os
 import re
 import spacy
 import PyPDF2
+from PyPDF2.errors import PdfReadError
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
 import time
@@ -32,22 +33,32 @@ def extract_seed(files):
         seed_text += text + " "
     return seed_text
 
+class PDFProcessingError(Exception):
+    """Custom exception for PDF processing errors."""
+    pass
 
 def extract_text_from_pdf(file):
     """
     Extract text from a single PDF file and preprocess it.
     """
-    reader = PyPDF2.PdfReader(file)
-    text = ""
-    for page in reader.pages:
-        extracted_text = page.extract_text()
-        if extracted_text:
-            text += extracted_text + " "
+    try:
+        reader = PyPDF2.PdfReader(file)
+        text = ""
+        for page in reader.pages:
+            extracted_text = page.extract_text()
+            if extracted_text:
+                text += extracted_text + " "
 
-    # Preprocess the extracted text
-    text = preprocess_text(text)
-    return text
+        # Preprocess the extracted text
+        text = preprocess_text(text)
+        return text
 
+    except PdfReadError as e:
+        # Raise a custom error and stop processing
+        raise PDFProcessingError(f"Error processing PDF file '{file}': {e}")
+    except Exception as e:
+        # Raise a custom error for any other general issue
+        raise PDFProcessingError(f"An unexpected error occurred while processing '{file}': {e}")
 
 import spacy
 
