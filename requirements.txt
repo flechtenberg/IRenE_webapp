@@ -1,4 +1,6 @@
 Flask
+Flask-Session
+flask-talisman
 gunicorn
 requests
 scikit-learn
