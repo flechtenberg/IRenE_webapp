@@ -12,3 +12,4 @@ PyPDF2
 numpy
 elsapy
 pandas
+en_core_web_sm
