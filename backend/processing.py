@@ -86,7 +86,13 @@ def extract_text_from_pdf(file):
 import spacy
 
 # Load spaCy English model
-nlp = en_core_web_sm.load()
+try:
+    nlp = spacy.load('en_core_web_sm')
+except OSError:
+    # Download the model if it's not available
+    from spacy.cli import download
+    download("en_core_web_sm")
+    nlp = spacy.load("en_core_web_sm")
 
 
 def preprocess_text(text):
