@@ -12,6 +12,7 @@ from elsapy.elsclient import ElsClient
 from elsapy.elssearch import ElsSearch
 from requests.exceptions import RequestException
 import logging
+import en_core_web_sm
 
 # Get the logger instance
 logger = logging.getLogger('app')
@@ -85,7 +86,7 @@ def extract_text_from_pdf(file):
 import spacy
 
 # Load spaCy English model
-nlp = spacy.load('en_core_web_sm')
+nlp = en_core_web_sm.load()
 
 
 def preprocess_text(text):
