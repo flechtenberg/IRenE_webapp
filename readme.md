@@ -33,6 +33,9 @@ The following are key priorities and upcoming enhancements for IRenE Webapp:
 - **📚 Documentation**: Provide detailed user guides and developer documentation to assist both users and contributors.
 - **☁️ Deployment to Heroku**: Prepare and deploy the application on Heroku, allowing users to access IRenE directly from their browsers without the need for local installation.
 
+## 📖 Documentation 
+API documentation can be found [here](https://flechtenberg.github.io/IRenE_webapp/).
+
 ## 📜 Citation
 
 If you use IRenE Webapp in your research, please cite the following publication:
