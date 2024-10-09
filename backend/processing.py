@@ -28,13 +28,23 @@ additional_stop_words = {
 
 def extract_seed(files):
     """
-    Extract text from uploaded PDF files and compile into a single string.
+    Extract text from a list of uploaded PDF files and return a list of preprocessed strings.
+
+    Each element in the returned list corresponds to the text content of one PDF document.
+    The text is preprocessed (e.g., cleaned of stopwords and punctuation) for further use.
+
+    Parameters:
+    - files (list): A list of PDF files uploaded by the user.
+
+    Returns:
+    - list: A list of preprocessed text strings, where each string represents the content of one PDF file.
     """
-    seed_text = ""
+    seed_texts = []
     for file in files:
         text = extract_text_from_pdf(file)
-        seed_text += text + " "
-    return seed_text
+        seed_texts.append(text)
+    return seed_texts
+
 
 class PDFProcessingError(Exception):
     """Custom exception for PDF processing errors."""
@@ -42,7 +52,16 @@ class PDFProcessingError(Exception):
 
 def extract_text_from_pdf(file):
     """
-    Extract text from a single PDF file and preprocess it.
+    Extract and preprocess text from a single PDF file.
+
+    This function reads through all the pages of the provided PDF file, extracts the text, and performs preprocessing
+    (such as cleaning, lowercasing, and tokenization) on the extracted text for further use in natural language processing tasks.
+
+    Parameters:
+    - file: A PDF file object from which text needs to be extracted.
+
+    Returns:
+    - str: A single preprocessed string containing the combined text from all pages of the PDF, ready for further analysis.
     """
     try:
         reader = PyPDF2.PdfReader(file)
@@ -71,8 +90,20 @@ nlp = spacy.load('en_core_web_sm')
 
 def preprocess_text(text):
     """
-    Preprocess the text by removing URLs, numbers, and references.
-    Additionally, use spaCy to filter out certain parts of speech and named entities.
+    Preprocess the input text by applying various cleaning and filtering steps for NLP tasks.
+
+    This function performs the following operations:
+    - Converts the text to lowercase.
+    - Removes URLs and numeric values.
+    - Utilizes spaCy for lemmatization, and filters out stop words, punctuation, and non-alphabetic tokens.
+    - Excludes tokens related to specific named entities (organizations, people, geopolitical entities, dates) and certain parts of speech (proper nouns, numbers).
+    - Custom stop words are also removed.
+
+    Parameters:
+    - text (str): The raw text to be processed.
+
+    Returns:
+    - str: A cleaned and preprocessed string where tokens have been lemmatized and unnecessary elements have been removed.
     """
     # Convert text to lowercase
     text = text.lower()
@@ -102,10 +133,26 @@ def preprocess_text(text):
     return cleaned_text
 
 
-def get_keywords(seed_text, num_keywords):
+def get_keywords(seed_texts, num_keywords):
     """
-    Extract top 'num_keywords' keywords using TF-IDF with enhanced preprocessing.
-    Returns a list of dictionaries with 'word' and 'weight'.
+    Extract the top 'num_keywords' keywords from a list of documents using TF-IDF (Term Frequency-Inverse Document Frequency).
+
+    This function performs the following steps:
+    - Combines custom stop words with standard English stop words.
+    - Initializes a TfidfVectorizer to convert the text data into a matrix of TF-IDF features, considering unigrams only.
+    - Fits the TF-IDF model to the provided documents (seed_texts).
+    - Sums the TF-IDF scores across all documents to rank the importance of each keyword.
+    - Filters out numbers and stop words from the resulting keywords.
+
+    Parameters:
+    - seed_texts (list of str): A list where each element represents the (filtered) text of a document.
+    - num_keywords (int): The number of top keywords to extract.
+
+    Returns:
+    - list of dict: A list of dictionaries containing the top keywords and their corresponding TF-IDF scores.
+      Each dictionary has two keys:
+        - 'word': The keyword.
+        - 'weight': The TF-IDF score, rounded to two decimal places.
     """
 
     # Combine with English stop words from TfidfVectorizer
@@ -116,17 +163,20 @@ def get_keywords(seed_text, num_keywords):
         stop_words=combined_stop_words,  # Now a list
         max_features=num_keywords,
         token_pattern=r'\b[a-zA-Z]{2,}\b',  # Tokens with at least two letters
-        ngram_range=(1, 2),  # Include unigrams and bigrams
+        ngram_range=(1, 1),  # Include unigrams and bigrams
         smooth_idf=True,
         sublinear_tf=True
     )
 
-    tfidf_matrix = vectorizer.fit_transform([seed_text])
+    # Fit and transform the list of documents
+    tfidf_matrix = vectorizer.fit_transform(seed_texts)
     feature_names = vectorizer.get_feature_names_out()
-    scores = tfidf_matrix.toarray()[0]
+
+    # Sum TF-IDF scores across all documents
+    scores = tfidf_matrix.sum(axis=0).A1  # Convert to 1D array
     keywords = sorted(zip(feature_names, scores), key=lambda x: x[1], reverse=True)
 
-    # Exclude any bigram containing stop words
+    # Filter and select top keywords
     filtered_keywords = []
     for word, weight in keywords:
         words = word.split()
@@ -138,19 +188,7 @@ def get_keywords(seed_text, num_keywords):
         if len(filtered_keywords) == num_keywords:
             break
 
-    # If not enough keywords after filtering, include more
-    if len(filtered_keywords) < num_keywords:
-        for word, weight in keywords[len(filtered_keywords):]:
-            if re.search(r'\d', word):
-                continue
-            filtered_keywords.append({'word': word, 'weight': round(weight, 2)})
-            if len(filtered_keywords) == num_keywords:
-                break
-
     return filtered_keywords
-
-
-
 
 
 def weighted_random_selection(keywords, weights):

@@ -1,4 +1,6 @@
 Flask
+Flask-Session
+flask-talisman
 gunicorn
 requests
 scikit-learn
@@ -6,6 +8,5 @@ nltk
 spacy
 whitenoise
 PyPDF2
-pandas
 numpy
 elsapy
