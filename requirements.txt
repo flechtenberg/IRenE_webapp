@@ -10,3 +10,4 @@ whitenoise
 PyPDF2
 numpy
 elsapy
+pandas
