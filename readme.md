@@ -1,10 +1,10 @@
 # IRenE Webapp 🚀
 
-**IRenE (Information Retrieval and Extraction)** is a powerful web tool designed to help researchers discover relevant scholarly articles based on an initial seed corpus of documents. Leveraging the Scopus API and natural language processing techniques, IRenE performs iterative sampling to provide a ranked list of articles that closely align with the user's research interests.
+**IRenE (Information Retrieval and Extraction)** is a web tool designed to help researchers discover relevant scholarly articles based on an initial seed corpus of documents. Leveraging the Scopus API and natural language processing techniques, IRenE performs iterative sampling to provide a ranked list of articles that closely align with the user's research interests.
 
-## 🌟 Features
+## Features
 
-- **Seed Corpus Upload**: Upload one or multiple PDF files to kickstart your research exploration.
+- **Seed Corpus Upload**: Upload one or multiple PDF files to start your research exploration.
 - **Keyword Extraction**: Automatically extract significant keywords from uploaded documents to guide and optimize the search.
 - **Scopus API Integration**: Utilize your own Scopus API key for authenticated, personalized searches. [Generate your key here](https://dev.elsevier.com/).
 - **Iterative Sampling**: Configure iterations and thresholds to fine-tune the sampling process for optimal results.
@@ -27,12 +27,7 @@ IRenE Webapp analyzes a seed corpus to extract keywords that represent the user'
 ## 🛠️ Roadmap
 
 The following are key priorities and upcoming enhancements for IRenE Webapp:
-
-- **⚙️ Error Handling**: Implement robust error-handling mechanisms for better stability and user experience, ensuring graceful recovery from API errors and invalid inputs.
-- **🔍 Testing**: Develop comprehensive unit and integration tests to ensure reliability, maintainability, and prevent regressions.
-- **📚 Documentation**: Provide detailed user guides and developer documentation to assist both users and contributors.
 - **☁️ Deployment to Heroku**: Prepare and deploy the application on Heroku, allowing users to access IRenE directly from their browsers without the need for local installation.
-
 ## 📖 Documentation 
 API documentation can be found [here](https://flechtenberg.github.io/IRenE_webapp/).
 
