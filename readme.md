@@ -1,6 +1,6 @@
 # IRenE Webapp 🚀
 
-**IRenE (Iterative Refinement and Exploration)** is a powerful web tool designed to help researchers discover relevant scholarly articles based on an initial seed corpus of documents. Leveraging the Scopus API and natural language processing techniques, IRenE performs iterative sampling to provide a ranked list of articles that closely align with the user's research interests.
+**IRenE (Information Retrieval and Extraction)** is a powerful web tool designed to help researchers discover relevant scholarly articles based on an initial seed corpus of documents. Leveraging the Scopus API and natural language processing techniques, IRenE performs iterative sampling to provide a ranked list of articles that closely align with the user's research interests.
 
 ## 🌟 Features
 
