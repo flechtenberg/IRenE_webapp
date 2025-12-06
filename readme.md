@@ -1,5 +1,7 @@
 # IRenE Webapp 🚀
 
+<img src="https://github.com/flechtenberg/flechtenberg_images/blob/main/IRenE_logo-min.png?raw=true" width="300" />
+
 **IRenE (Information Retrieval and Extraction)** is a web tool designed to help researchers discover relevant scholarly articles based on an initial seed corpus of documents. Leveraging the Scopus API and natural language processing techniques, IRenE performs iterative sampling to provide a ranked list of articles that closely align with the user's research interests.
 
 ## Features
